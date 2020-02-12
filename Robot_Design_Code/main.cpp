@@ -7,6 +7,7 @@
 #include <math.h>
 
 #DEFINE PI 3.1415
+#DEFINE MOVE 50
 
 //Declarations for IGWAN motors
 FEHMotor leftMotor(FEHMotor::Motor0,9);
@@ -56,16 +57,16 @@ void linearMove(float distance)
         //Move forward for number of counts
         while(leftEncoder.Counts() < x)
         {
-            rightMotor.SetPercent(50);
-            leftMotor.SetPercent(50);
+            rightMotor.SetPercent(MOVE);
+            leftMotor.SetPercent(MOVE);
         }
     }else if (distance<0)
     {
         //Move backward for number of counts
         while(leftEncoder.Counts() < x)
         {
-            rightMotor.SetPercent(-50);
-            leftMotor.SetPercent(-50);
+            rightMotor.SetPercent(-MOVE);
+            leftMotor.SetPercent(-MOVE);
         }
     }
     //Stop motors
