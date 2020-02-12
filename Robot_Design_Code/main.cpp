@@ -9,12 +9,14 @@
 //Defining pi for consistency and ease of use
 #DEFINE PI 3.1415
 /*Definition for a standard power for use with IGWAN motor movement.
- * Useful because it allows universal changes with one adjustment. Must be a value between -100 and 100.*/
+ Useful because it allows universal changes with one adjustment. Must be a value between -100 and 100.*/
 #DEFINE MOVE 50
 //Definition for wheel diameter in inches
 #DEFINE WHEEL 2.5
 //Definition for distance between wheels (Wheel to Wheel) in inches
 #DEFINE W2W 7
+//Definition for a rest period to be used to ensure robot makes complete stops. Defined so it can be optimized with ease later.
+#DEFINE REST 0.1
 
 //Declarations for IGWAN motors with their max voltage of 9V
 FEHMotor leftMotor(FEHMotor::Motor0,9);
@@ -29,7 +31,7 @@ AnalogInputPin CdS(FEHIO::P0_2);
 void linearMove(float distance);
 
 /*Function prototype for pivoting on a spot, returns nothing.
- *Accepts a degree amount to turn from -360 to 360, with negative numbers turning left and positive turning right.*/
+ Accepts a degree amount to turn from -360 to 360, with negative numbers turning left and positive turning right.*/
 void pivot(float degrees);
 
 //Function prototype for checking what color the CdS cell sees, returns 0 for red, 1 for blue, 2 for black/no color
@@ -62,6 +64,9 @@ void linearMove(float distance)
     float x;
     //Converts distance input into the number of counts for the shaft encoder to move for
     x = (318.0/(WHEEL*PI))*abs(distance);
+    //Reset counts for safety
+    leftEncoder.ResetCount();
+    rightEncoder.ResetCount();
     //Checks if forward or backwards distance is requested
     if (distance>0)
     {
@@ -85,7 +90,9 @@ void linearMove(float distance)
     rightMotor.Stop();
     //Reset counts
     leftEncoder.ResetCount();
-    Sleep(0.1);
+    rightEncoder.ResetCount();
+    //Rest to ensure momentum stops
+    Sleep(REST);
 }
 
 //Function definition for pivoting
@@ -95,6 +102,9 @@ void pivot(float degrees)
     float x;
     //Converts degree input to number of counts the motors need to turn in opposite directions for
     x = ((318*W2W)/(360*WHEEL))*abs(degrees);
+    //Reset counts for safety
+    leftEncoder.ResetCount();
+    rightEncoder.ResetCount();
     //Checks for negative (left) or positive (right) turn
     if (degrees > 0)
     {
@@ -107,7 +117,7 @@ void pivot(float degrees)
     } else if (degrees < 0)
     {
         //Turn left for the number of counts
-        while (leftEncoder.Counts() < x)
+        while (rightEncoder.Counts() < x)
         {
             rightMotor.SetPercent(MOVE);
             leftMotor.SetPercent(-MOVE);
@@ -118,27 +128,30 @@ void pivot(float degrees)
     rightMotor.Stop();
     //Reset counts
     leftEncoder.ResetCount();
-    Sleep(0.1);
+    rightEncoder.ResetCount();
+    //Rest to insure momentum stops
+    Sleep(REST);
 }
 
 //Function definition for checking the color that the CdS cell sees
 int cdsColor()
 {
-    //Simple if checks to determine what color the CdS cell sees based off of measured ranges
+    LCD.Clear(FEHLCD::Black);
+    LCD.Write("Checking color from CdS Cell");
+    /*Simple if checks to determine what color the CdS cell sees based off of measured ranges.
+    Will change the LCD display to match the color it detects*/
     if (CdS.Value() > 0 && CdS.Value() <= 1.2)
     {
-        LCD.Clear(FEHLCD::Black);
-        LCD.Write("Red");
+        LCD.Clear(FEHLCD::Red);
         return 0;
     } else if (CdS.Value() > 1.2 && CdS.Value() <= 2.4)
     {
-        LCD.Clear(FEHLCD::Black);
-        LCD.Write("Blue");
+        LCD.Clear(FEHLCD::Blue);
         return 1;
     } else if (CdS.Value() > 2.4 && CdS.Value() <= 3.3)
     {
         LCD.Clear(FEHLCD::Black);
-        LCD.Write("Black");
+        LCD.Write("No colored light detected");
         return 2;
     }
 }
