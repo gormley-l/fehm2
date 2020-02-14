@@ -14,7 +14,7 @@
 //Definition for wheel diameter in inches
 #define WHEEL 2.5
 //Definition for distance between wheels (Wheel to Wheel) in inches
-#define W2W 7.625
+#define W2W 7
 //Definition for a rest period to be used to ensure robot makes complete stops. Defined so it can be optimized with ease later.
 #define REST 0.1
 
@@ -28,11 +28,11 @@ DigitalEncoder rightEncoder(FEHIO::P0_1);
 AnalogInputPin CdS(FEHIO::P0_2);
 
 //Function prototype for moving a linear distance, returns nothing, accepts a distance in inches
-void linearMove(float distance);
+void linearMove(float distance, float speed);
 
 /*Function prototype for pivoting on a spot, returns nothing.
  Accepts a degree amount to turn from -360 to 360, with negative numbers turning left and positive turning right.*/
-void pivot(float degrees);
+void pivot(float degrees, float speed);
 
 //Function prototype for checking what color the CdS cell sees, returns 0 for red, 1 for blue, 2 for black/no color
 //If it returns a 3, it could not get any reading from the CdS cell, or some other error has occured
@@ -79,7 +79,7 @@ int main(void)
 }
 
 //Function definition for moving a linear distance, input is a linear distance
-void linearMove(float distance)
+void linearMove(float distance, float speed)
 {
     //Temp variable
     float x;
@@ -98,16 +98,16 @@ void linearMove(float distance)
         //Move forward for number of counts
         while(leftEncoder.Counts() < x)
         {
-            rightMotor.SetPercent(MOVE);
-            leftMotor.SetPercent(MOVE);
+            rightMotor.SetPercent(speed);
+            leftMotor.SetPercent(speed);
         }
     }else if (distance<0)
     {
         //Move backward for number of counts
         while(leftEncoder.Counts() < x)
         {
-            rightMotor.SetPercent(-MOVE);
-            leftMotor.SetPercent(-MOVE);
+            rightMotor.SetPercent(-speed);
+            leftMotor.SetPercent(-speed);
         }
     }
     //Stop motors
@@ -122,7 +122,7 @@ void linearMove(float distance)
 }
 
 //Function definition for pivoting
-void pivot(float degrees)
+void pivot(float degrees, float speed)
 {
     //Temp variable
     float x;
@@ -141,16 +141,16 @@ void pivot(float degrees)
         //Turn right for the number of counts
         while (leftEncoder.Counts() < x)
         {
-            rightMotor.SetPercent(-MOVE);
-            leftMotor.SetPercent(MOVE);
+            rightMotor.SetPercent(-speed);
+            leftMotor.SetPercent(speed);
         }
     } else if (degrees < 0)
     {
         //Turn left for the number of counts
         while (rightEncoder.Counts() < x)
         {
-            rightMotor.SetPercent(MOVE);
-            leftMotor.SetPercent(-MOVE);
+            rightMotor.SetPercent(speed);
+            leftMotor.SetPercent(-speed);
         }
     }
     //Stop motors
