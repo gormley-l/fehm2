@@ -114,6 +114,8 @@ void linearMove(float distance, float speed)
     leftMotor.Stop();
     rightMotor.Stop();
     //Reset counts
+    LCD.WriteLine(leftEncoder.Counts());
+    LCD.WriteLine(rightEncoder.Counts());
     leftEncoder.ResetCounts();
     rightEncoder.ResetCounts();
     LCD.Clear(FEHLCD::Black);
@@ -157,6 +159,8 @@ void pivot(float degrees, float speed)
     leftMotor.Stop();
     rightMotor.Stop();
     //Reset counts
+    LCD.WriteLine(leftEncoder.Counts());
+    LCD.WriteLine(rightEncoder.Counts());
     leftEncoder.ResetCounts();
     rightEncoder.ResetCounts();
     //Rest to insure momentum stops
