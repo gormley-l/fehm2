@@ -55,8 +55,8 @@ int main(void)
         }
     }
 
-    linearMove(12);
-    pivot(90);
+    linearMove(12, MOVE);
+    pivot(90, MOVE);
    /* //Printing CdS reading to screen untill screen is pressed again
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Checking CdS Cell function");
