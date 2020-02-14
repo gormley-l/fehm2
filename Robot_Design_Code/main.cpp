@@ -14,7 +14,7 @@
 //Definition for wheel diameter in inches
 #define WHEEL 2.5
 //Definition for distance between wheels (Wheel to Wheel) in inches
-#define W2W 7
+#define W2W 7.625
 //Definition for a rest period to be used to ensure robot makes complete stops. Defined so it can be optimized with ease later.
 #define REST 0.1
 
@@ -55,7 +55,9 @@ int main(void)
         }
     }
 
-    //Printing CdS reading to screen untill screen is pressed again
+    linearMove(12);
+    pivot(90);
+   /* //Printing CdS reading to screen untill screen is pressed again
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Checking CdS Cell function");
     while(true)
@@ -69,7 +71,7 @@ int main(void)
             break;
         }
         Sleep(REST);
-    }
+    }*/
 
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Done.");
