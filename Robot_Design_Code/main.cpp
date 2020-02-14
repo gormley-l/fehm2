@@ -18,6 +18,13 @@
 //Definition for a rest period to be used to ensure robot makes complete stops. Defined so it can be optimized with ease later.
 #define REST 0.1
 
+//Definition for line following switch cases
+#define on_line 0
+#define line_on_right 1
+#define line_on_left 2
+#define line_far_right 3
+#define line_far_left 4
+
 //Declarations for IGWAN motors with their max voltage of 9V
 FEHMotor leftMotor(FEHMotor::Motor0,9);
 FEHMotor rightMotor(FEHMotor::Motor1,9);
@@ -26,6 +33,10 @@ DigitalEncoder leftEncoder(FEHIO::P0_0);
 DigitalEncoder rightEncoder(FEHIO::P0_1);
 //Declaration for the CdS sensor
 AnalogInputPin CdS(FEHIO::P0_2);
+//Declaration of optosensors for line following
+AnalogInputPin leftLine(FEHIO::P1_0);
+AnalogInputPin centerLine(FEHIO::P1_1);
+AnalogInputPin rightLine(FEHIO::P1_2);
 
 //Function prototype for moving a linear distance, returns nothing, accepts a distance in inches
 void linearMove(float distance, float speed);
@@ -37,6 +48,9 @@ void pivot(float degrees, float speed);
 //Function prototype for checking what color the CdS cell sees, returns 0 for red, 1 for blue, 2 for black/no color
 //If it returns a 3, it could not get any reading from the CdS cell, or some other error has occured
 int cdsColor();
+
+//Function prototype for line following
+void lineFollow();
 
 int main(void)
 {
@@ -191,5 +205,59 @@ int cdsColor()
     } else
     {
         return 3;
+    }
+}
+
+//Function definition for following a line
+void lineFollow()
+{
+    int state = line_far_left;
+    while(true)
+    {
+        //Setting state of line
+        switch(state)
+        {
+        case on_line:
+            rightMotor.SetPercent(10);
+            leftMotor.SetPercent(10);
+            break;
+        case line_on_right:
+            rightMotor.SetPercent(10);
+            leftMotor.SetPercent(20);
+            break;
+        case line_on_left:
+            rightMotor.SetPercent(20);
+            leftMotor.SetPercent(10);
+            break;
+        case line_far_right:
+            rightMotor.SetPercent(10);
+            leftMotor.SetPercent(30);
+            break;
+        case line_far_left:
+            rightMotor.SetPercent(30);
+            leftMotor.SetPercent(10);
+            break;
+        default:
+            rightMotor.Stop();
+            leftMotor.Stop();
+            break;
+        }
+        //Updating state to turn based on
+        if(rightLine.Value() < 2.7 && centerLine.Value() > 2.0 && leftLine.Value() < 2.4)
+        {
+            state = on_line;
+        } else if (rightLine.Value() > 2.7 && centerLine.Value() > 2.0 && leftLine.Value() < 2.4)
+        {
+            state = line_on_right;
+        }else if (rightLine.Value() < 2.7 && centerLine.Value() > 2.0 && leftLine.Value() > 2.4)
+        {
+            state = line_on_left;
+        }else if (rightLine.Value() > 2.7 && centerLine.Value() < 2.0 && leftLine.Value() < 2.4)
+        {
+            state = line_far_right;
+        }else if (rightLine.Value() < 2.7 && centerLine.Value() < 2.0 && leftLine.Value() > 2.4)
+        {
+            state = line_far_left;
+        }
     }
 }
