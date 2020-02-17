@@ -69,8 +69,8 @@ int main(void)
         }
     }
 
-    linearMove(12, MOVE);
-    pivot(90, MOVE);
+    linearMove(-5, MOVE);
+    pivot(360, MOVE);
    /* //Printing CdS reading to screen untill screen is pressed again
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Checking CdS Cell function");
@@ -128,11 +128,11 @@ void linearMove(float distance, float speed)
     leftMotor.Stop();
     rightMotor.Stop();
     //Reset counts
-    LCD.WriteLine(leftEncoder.Counts());
-    LCD.WriteLine(rightEncoder.Counts());
+    LCD.WriteLine("Actual movement:");
+    LCD.WriteLine(leftEncoder.Counts()/(318.0/(WHEEL*PI)));
+    LCD.WriteLine(rightEncoder.Counts()/(318.0/(WHEEL*PI)));
     leftEncoder.ResetCounts();
     rightEncoder.ResetCounts();
-    LCD.Clear(FEHLCD::Black);
     //Rest to ensure momentum stops
     Sleep(REST);
 }
@@ -173,12 +173,12 @@ void pivot(float degrees, float speed)
     leftMotor.Stop();
     rightMotor.Stop();
     //Reset counts
-    LCD.WriteLine(leftEncoder.Counts());
-    LCD.WriteLine(rightEncoder.Counts());
+    LCD.WriteLine("Actual turn:");
+    LCD.WriteLine(leftEncoder.Counts()/((318*W2W)/(360*WHEEL)));
+    LCD.WriteLine(rightEncoder.Counts()/((318*W2W)/(360*WHEEL)));
     leftEncoder.ResetCounts();
     rightEncoder.ResetCounts();
     //Rest to insure momentum stops
-    LCD.Clear(FEHLCD::Black);
     Sleep(REST);
 }
 
@@ -212,6 +212,8 @@ int cdsColor()
 void lineFollow()
 {
     int state = line_far_left;
+    LCD.Clear(FEHLCD::Black);
+    LCD.WriteLine("Following Line");
     while(true)
     {
         //Setting state of line
