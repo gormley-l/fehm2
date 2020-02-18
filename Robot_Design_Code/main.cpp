@@ -99,6 +99,20 @@ int main(void)
     linearMove(10, MOVE);
     pivot(-90, TURN);
     linearMove(2, MOVE);
+   if(cdsColor() == 0)
+        {
+            LCD.WriteLine("Red button detected");
+            rightMotor.SetPercent(15);
+            leftMotor.SetPercent(25);
+            break;
+        }
+ else if(cdsColor()==1)
+       {
+           LCD.WriteLine("Blue button detected");
+           rightMotor.SetPercent(25);
+           leftMotor.SetPercent(15);
+           break;
+       }
     Sleep(2.0);
     linearMove(3, MOVE);
     Sleep(1.0);
