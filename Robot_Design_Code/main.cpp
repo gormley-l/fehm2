@@ -11,10 +11,11 @@
 /*Definition for a standard power for use with IGWAN motor movement.
  Useful because it allows universal changes with one adjustment. Must be a value between -100 and 100.*/
 #define MOVE 50
+#define TURN 25
 //Definition for wheel diameter in inches
 #define WHEEL 2.5
 //Definition for distance between wheels (Wheel to Wheel) in inches
-#define W2W 7
+#define W2W 7.5
 //Definition for a rest period to be used to ensure robot makes complete stops. Defined so it can be optimized with ease later.
 #define REST 0.1
 
@@ -26,8 +27,8 @@
 #define line_far_left 4
 
 //Declarations for IGWAN motors with their max voltage of 9V
-FEHMotor leftMotor(FEHMotor::Motor0,9);
-FEHMotor rightMotor(FEHMotor::Motor1,9);
+FEHMotor leftMotor(FEHMotor::Motor3,9);
+FEHMotor rightMotor(FEHMotor::Motor2,9);
 //Declarations for the shaft encoders on the IGWAN motors
 DigitalEncoder leftEncoder(FEHIO::P0_0);
 DigitalEncoder rightEncoder(FEHIO::P0_1);
@@ -64,19 +65,54 @@ int main(void)
     {
         if(LCD.Touch(&x,&y))
         {
+            LCD.Clear(FEHLCD::Black);
+            break;
+        }
+    }
+    LCD.WriteLine("Waiting for light to continue");
+    while(true)
+    {
+        if(cdsColor() == 0)
+        {
             LCD.WriteLine("Starting...");
             break;
         }
     }
 
-    linearMove(-5, MOVE);
-    pivot(360, MOVE);
-   /* //Printing CdS reading to screen untill screen is pressed again
-    LCD.Clear(FEHLCD::Black);
+    //Testing turning
+    /*while(true)
+    {
+        pivot(45, TURN);
+        Sleep(2.0);
+        pivot(-45, TURN);
+        Sleep(2.0);
+    }*/
+
+    //Testing course manuverability
+    linearMove(-12, MOVE);
+    pivot(-135, TURN);
+    linearMove(26, 1.5*MOVE);
+    pivot(180, TURN);
+    Sleep(1.0);
+    linearMove(22, MOVE);
+    pivot(90, TURN);
+    linearMove(10, MOVE);
+    pivot(-90, TURN);
+    linearMove(2, MOVE);
+    Sleep(2.0);
+    linearMove(3, MOVE);
+    Sleep(1.0);
+    linearMove(-6, MOVE);
+    pivot(-90, TURN);
+    linearMove(12, MOVE);
+    pivot(45, TURN);
+    linearMove(14, MOVE);
+
+   //Printing CdS reading to screen untill screen is pressed again
+   /* LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Checking CdS Cell function");
     while(true)
     {
-        LCD.Clear(FEHLCD::Black);
         LCD.WriteLine(CdS.Value());
         if(LCD.Touch(&x,&y))
         {
@@ -143,7 +179,8 @@ void pivot(float degrees, float speed)
     //Temp variable
     float x;
     //Converts degree input to number of counts the motors need to turn in opposite directions for
-    x = ((318*W2W)/(360*WHEEL))*abs(degrees);
+    x = ((318*W2W)/(360*WHEEL))*abs(degrees);//*(0.0123*log(abs(degrees))+0.9262);
+    //y = ((318*W2W)/(360*WHEEL))*abs(degrees);//*(0.0117*log(abs(degrees))+0.8993);
     //Reset counts for safety
     leftEncoder.ResetCounts();
     rightEncoder.ResetCounts();
@@ -155,7 +192,7 @@ void pivot(float degrees, float speed)
     if (degrees > 0)
     {
         //Turn right for the number of counts
-        while (leftEncoder.Counts() < x)
+        while ((leftEncoder.Counts()) <= x)
         {
             rightMotor.SetPercent(-speed);
             leftMotor.SetPercent(speed);
@@ -163,7 +200,7 @@ void pivot(float degrees, float speed)
     } else if (degrees < 0)
     {
         //Turn left for the number of counts
-        while (rightEncoder.Counts() < x)
+        while ((rightEncoder.Counts()) <= x)
         {
             rightMotor.SetPercent(speed);
             leftMotor.SetPercent(-speed);
@@ -185,19 +222,18 @@ void pivot(float degrees, float speed)
 //Function definition for checking the color that the CdS cell sees
 int cdsColor()
 {
-    LCD.Clear(FEHLCD::Black);
     LCD.Write("Checking color from CdS Cell");
     /*Simple if checks to determine what color the CdS cell sees based off of measured ranges.
     Will change the LCD display to match the color it detects*/
-    if (CdS.Value() > 0 && CdS.Value() <= 1.2)
+    if (CdS.Value() > 0 && CdS.Value() <= 0.90)
     {
         LCD.Clear(FEHLCD::Red);
         return 0;
-    } else if (CdS.Value() > 1.2 && CdS.Value() <= 2.4)
+    } else if (CdS.Value() > 0.90 && CdS.Value() <= 1.8)
     {
         LCD.Clear(FEHLCD::Blue);
         return 1;
-    } else if (CdS.Value() > 2.4 && CdS.Value() <= 3.3)
+    } else if (CdS.Value() > 1.80 && CdS.Value() <= 3.3)
     {
         LCD.Clear(FEHLCD::Black);
         LCD.Write("No colored light detected");
@@ -216,7 +252,7 @@ void lineFollow()
     LCD.WriteLine("Following Line");
     while(true)
     {
-        //Setting state of line
+        //Setting state of line based on where sensors are located in relationship to the line
         switch(state)
         {
         case on_line:
