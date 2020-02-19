@@ -114,8 +114,6 @@ int main(void)
            break;
        }
     Sleep(2.0);
-    linearMove(3, MOVE);
-    Sleep(1.0);
     linearMove(-6, MOVE);
     pivot(-90, TURN);
     linearMove(12, MOVE);
