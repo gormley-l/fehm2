@@ -53,6 +53,9 @@ int cdsColor();
 //Function prototype for line following
 void lineFollow();
 
+//Function prototype for jukebox
+void jukebox();
+
 int main(void)
 {
 
@@ -74,7 +77,6 @@ int main(void)
     {
         if(cdsColor() == 0)
         {
-            LCD.WriteLine("Starting...");
             break;
         }
     }
@@ -89,40 +91,47 @@ int main(void)
     }*/
 
     //Testing course manuverability
-    linearMove(-12, MOVE);
+    //Moving off of start
+    linearMove(-11, MOVE);
     pivot(-135, TURN);
-    linearMove(26, 1.5*MOVE);
+
+
+    /*pivot(-135, TURN);
+    //Moving up ramp
+    LinearMove(8, MOVE);
+    linearMove(30, 1.5*MOVE);
     pivot(180, TURN);
     Sleep(1.0);
-    linearMove(22, MOVE);
+    //Moving down ramp
+    linearMove(26, MOVE);
     pivot(90, TURN);
     linearMove(10, MOVE);
     pivot(-90, TURN);
     linearMove(2, MOVE);
     if(cdsColor() == 0)
         {
-           rightMotor.SetPercent(15);
-           leftMotor.SetPercent(25);
-           Sleep(2.0);
-           rightMotor.SetPercent(-25);
-           leftMotor.SetPercent(-15); 
-           break;
-        }
-    else if(cdsColor()==1)
+            pivot(20, TURN);
+            linearMove(1, MOVE);
+            pivot(-20, TURN);
+            linearMove(3, MOVE);
+
+
+        }else if(cdsColor()==1)
        {
-           rightMotor.SetPercent(25);
-           leftMotor.SetPercent(15);
-           Sleep(2.0);
-           rightMotor.SetPercent(-15);
-           leftMotor.SetPercent(-25); 
-           break;
+            pivot(-20, TURN);
+            linearMove(1, MOVE);
+            pivot(20, TURN);
+            linearMove(3, MOVE);
+
        }
     Sleep(2.0);
-    linearMove(-6, MOVE);
-    pivot(-90, TURN);
+    linearMove(-6, MOVE);*/
+
+    //Returning to start
+    /*pivot(-90, TURN);
     linearMove(12, MOVE);
     pivot(45, TURN);
-    linearMove(14, MOVE);
+    linearMove(14, MOVE);*/
 
    //Printing CdS reading to screen untill screen is pressed again
    /* LCD.Clear(FEHLCD::Black);
@@ -166,6 +175,7 @@ void linearMove(float distance, float speed)
         {
             rightMotor.SetPercent(speed);
             leftMotor.SetPercent(speed);
+            Sleep(REST);
         }
     }else if (distance<0)
     {
@@ -174,6 +184,7 @@ void linearMove(float distance, float speed)
         {
             rightMotor.SetPercent(-speed);
             leftMotor.SetPercent(-speed);
+            Sleep(REST);
         }
     }
     //Stop motors
@@ -212,6 +223,7 @@ void pivot(float degrees, float speed)
         {
             rightMotor.SetPercent(-speed);
             leftMotor.SetPercent(speed);
+            Sleep(REST);
         }
     } else if (degrees < 0)
     {
@@ -220,6 +232,7 @@ void pivot(float degrees, float speed)
         {
             rightMotor.SetPercent(speed);
             leftMotor.SetPercent(-speed);
+            Sleep(REST);
         }
     }
     //Stop motors
@@ -314,4 +327,41 @@ void lineFollow()
             state = line_far_left;
         }
     }
+}
+
+void jukebox()
+{
+    linearMove(-11, MOVE);
+    pivot(-45, TURN);
+    linearMove(-18, MOVE);
+    linearMove(4, MOVE);
+    pivot(90, TURN);
+    do
+    {
+        linearMove(0.1, MOVE);
+        Sleep(REST);
+    } while(cdsColor() == 2);
+
+    if(cdsColor() == 0)
+        {
+            pivot(45, TURN);
+            linearMove(1, MOVE);
+            pivot(-45, TURN);
+            linearMove(3, MOVE);
+            linearMove(-6, MOVE);
+            pivot(-90, TURN);
+            linearMove(-6, MOVE);
+
+       }else if(cdsColor()==1)
+       {
+            pivot(-45, TURN);
+            linearMove(1, MOVE);
+            pivot(45, TURN);
+            linearMove(3, MOVE);
+            linearMove(-6, MOVE);
+            pivot(-90, TURN);
+            linearMove(-8, MOVE);
+       }
+    Sleep(2.0);
+
 }
