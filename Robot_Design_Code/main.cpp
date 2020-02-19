@@ -104,6 +104,9 @@ int main(void)
             LCD.WriteLine("Red button detected");
             rightMotor.SetPercent(15);
             leftMotor.SetPercent(25);
+            Sleep(2.0);
+           rightMotor.SetPercent(-25);
+           leftMotor.SetPercent(-15); 
             break;
         }
  else if(cdsColor()==1)
@@ -111,6 +114,9 @@ int main(void)
            LCD.WriteLine("Blue button detected");
            rightMotor.SetPercent(25);
            leftMotor.SetPercent(15);
+           Sleep(2.0)
+           rightMotor.SetPercent(-15);
+           leftMotor.SetPercent(-25); 
            break;
        }
     Sleep(2.0);
