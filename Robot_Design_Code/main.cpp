@@ -296,7 +296,7 @@ void lineFollow()
             leftMotor.Stop();
             break;
         }
-        //Updating state to turn based on
+        //Updating state to turn based on optosensor inputs
         if(rightLine.Value() < 2.7 && centerLine.Value() > 2.0 && leftLine.Value() < 2.4)
         {
             state = on_line;
