@@ -101,6 +101,7 @@ int main(void)
     linearMove(2, MOVE);
    if(cdsColor() == 0)
         {
+       //blegh
             LCD.WriteLine("Red button detected");
             rightMotor.SetPercent(15);
             leftMotor.SetPercent(25);
@@ -114,7 +115,7 @@ int main(void)
            LCD.WriteLine("Blue button detected");
            rightMotor.SetPercent(25);
            leftMotor.SetPercent(15);
-           Sleep(2.0)
+           Sleep(2.0);
            rightMotor.SetPercent(-15);
            leftMotor.SetPercent(-25); 
            break;
