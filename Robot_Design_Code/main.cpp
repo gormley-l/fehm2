@@ -33,19 +33,22 @@
 #define RIGHT_BREAK 3.0 //formerly 2.7 from exploration 2
 
 //Defining color integers for CdS readings
-#define RED 0
-#define BLUE 1
+#define CDSRED 0
+#define CDSBLUE 1
 #define NO_COLOR 2
 #define NO_READING 3
 
 //Declarations for IGWAN motors with their max voltage of 9V
 FEHMotor leftMotor(FEHMotor::Motor3,9);
 FEHMotor rightMotor(FEHMotor::Motor2,9);
+
 //Declarations for the shaft encoders on the IGWAN motors
 DigitalEncoder leftEncoder(FEHIO::P0_0);
 DigitalEncoder rightEncoder(FEHIO::P0_1);
+
 //Declaration for the CdS sensor
 AnalogInputPin CdS(FEHIO::P0_2);
+
 //Declaration of optosensors for line following
 AnalogInputPin leftLine(FEHIO::P1_0);
 AnalogInputPin centerLine(FEHIO::P1_1);
@@ -68,11 +71,17 @@ void pivot(float degrees, float speed);
 //If it returns a 3, it could not get any reading from the CdS cell, or some other error has occured
 int cdsColor();
 
+//Function prototype for testing the CdS cell readings
+void testCdS();
+
 //Function prototype for line following, accepts integers to determine its end conition, 0 is indefinite, 1 is microswitches, 2 is screen touch
 void lineFollow(int condition);
 
 //Function prototype for testing line following end conditions
 bool checkCondition(int end);
+
+//Function prototype for checking if a side's microswitches are pressed, accepts an int, 0 for front side, 1 for back side microswitches to be checked
+bool microSwitchCheck(int side);
 
 //Function prototype for pressing the jukebox button
 void jukebox();
@@ -101,22 +110,23 @@ int main(void)
     LCD.WriteLine("Waiting for light to continue");
     while(true)
     {
-        if(cdsColor() == 0)
+        if(cdsColor() == CDSRED)
         {
             break;
         }
     }
 
+    tray();
     //Testing course manuverability
     //going up ramp
-    linearMove(-11, MOVE);
+    /*linearMove(-11, MOVE);
     pivot(45, TURN);
     linearMove(-30, 1.5*MOVE);
     pivot(90, TURN);
     linearMove(5, MOVE);
     pivot(-90, TURN);
     linearMove(5, MOVE);
-    linearMove(-5, MOVE);
+    linearMove(-5, MOVE);*/
 
     //Testing tray dump
     /*linearMove(5, 80);
@@ -256,11 +266,11 @@ int cdsColor()
     if (CdS.Value() > 0 && CdS.Value() <= 0.90)
     {
         LCD.Clear(FEHLCD::Red);
-        return RED;
+        return CDSRED;
     } else if (CdS.Value() > 0.90 && CdS.Value() <= 1.8)
     {
         LCD.Clear(FEHLCD::Blue);
-        return BLUE;
+        return CDSBLUE;
     } else if (CdS.Value() > 1.80 && CdS.Value() <= 3.3)
     {
         LCD.Clear(FEHLCD::Black);
@@ -270,6 +280,25 @@ int cdsColor()
     {
         return NO_READING;
     }
+}
+
+//Funtion for testing the CdS cell values
+void testCdS()
+{
+    float x,y;
+    LCD.Clear(FEHLCD::Black);
+        LCD.WriteLine("Checking CdS Cell function");
+        while(true)
+        {
+            LCD.WriteLine(CdS.Value());
+            if(LCD.Touch(&x,&y))
+            {
+                LCD.WriteLine("Ending CdS reading...");
+                Sleep(1.0);
+                break;
+            }
+            Sleep(REST);
+        }
 }
 
 //Function definition for following a line
@@ -341,6 +370,7 @@ void lineFollow(int condition)
 }
 
 //Function definition for checking if the desired end condition for the line following is met
+//This can be made into a switch case
 bool checkCondition(int end)
 {
     float x,y;
@@ -351,9 +381,13 @@ bool checkCondition(int end)
     }else if (end == 1)
     {
         //code for ending based on microswitch input
-        LCD.WriteLine("Code for microswitch end condition incomplete");
-        LCD.WriteLine("Skipping line following");
-        return false;
+        if (microSwitchCheck(1) == false)
+        {
+            return false;
+        } else
+        {
+            return true;
+        }
     }else if (end == 2)
     {
         //code for ending based on screen touch
@@ -373,13 +407,48 @@ bool checkCondition(int end)
 
 }
 
+//Function definition that checks for microswitch values on the front or back of the robot
+bool microSwitchCheck(int side)
+{
+    //Case 0 checks the front microswitches, case 1 checks the back sensors
+    //Returning true means both sensors are NOT pressed
+    //Returning false means both sensors ARE pressed (or an inproper number was checked and the switchcase defaulted)
+    switch(side)
+    {
+    case 0:
+        if (frontLeftSwitch.Value() == false && frontRightSwitch.Value() == false)
+        {
+            return false;
+        } else
+        {
+            return true;
+        }
+    case 1:
+        if (backLeftSwitch.Value() == false && backRightSwitch.Value() == false)
+        {
+            return false;
+        } else
+        {
+            return true;
+        }
+    default:
+        LCD.WriteLine("Inproper integer input for checking microswitches");
+        return false;
+    }
+}
+
 void jukebox()
 {
-    linearMove(-11, MOVE);
-    pivot(-45, TURN);
-    linearMove(-18, MOVE);
-    linearMove(4, MOVE);
-    pivot(90, TURN);
+    while(microSwitchCheck(0))
+    {
+        leftMotor.SetPercent(MOVE);
+        rightMotor.SetPercent(MOVE);
+        Sleep(REST);
+    }
+    leftMotor.Stop();
+    rightMotor.Stop();
+    linearMove(-4, MOVE);
+    pivot(-90, TURN);
     do
     {
         linearMove(0.1, MOVE);
@@ -388,7 +457,7 @@ void jukebox()
 
     switch(cdsColor())
     {
-    case RED:
+    case CDSRED:
         pivot(45, TURN);
         linearMove(1, MOVE);
         pivot(-45, TURN);
@@ -396,7 +465,7 @@ void jukebox()
         linearMove(-6, MOVE);
         pivot(-90, TURN);
         linearMove(-6, MOVE);
-    case BLUE:
+    case CDSBLUE:
         pivot(-45, TURN);
         linearMove(1, MOVE);
         pivot(45, TURN);
@@ -414,35 +483,47 @@ void jukebox()
         pivot(-90, TURN);
         linearMove(-8, MOVE);
     }
-    Sleep(2.0);
-
+    pivot(45, TURN);
+    linearMove(13, MOVE);
+    Sleep(REST);
 }
 
 //Function definition for dumping the tray
 void tray()
 {
+    //This float is exclusively required to go up the ramp at a high speed but slow down to a slower speed without stopping to prevent the tray from flying off
+    float ramp = (318.0/(WHEEL*PI))*abs(22);
     //This function is set up to start at the beginning and move the robot up the ramp and dump the tray at the sink
     //Going up ramp from starting position
-    linearMove(11, MOVE);
+    linearMove(10, MOVE);
     pivot(45, TURN);
-    linearMove(30, 1.5*MOVE);
-    //Turning towards the sink
-    pivot(-90, TURN);
-    //Running into the side wall next to the sink
-    while(frontLeftSwitch.Value() == true && frontRightSwitch.Value() == true)
+    //A chunk of the linearMove function is used here in order to move a set distance to get up the ramp, however, it is modified to not stop the motors so that the robot can
+    //instead switch to a slower speed without stopping in order to prevent the tray from flying off of the robot
+    while(leftEncoder.Counts() < ramp)
     {
-        leftMotor.SetPercent(MOVE);
-        rightMotor.SetPercent(MOVE);
+        rightMotor.SetPercent(1.5*MOVE);
+        leftMotor.SetPercent(1.5*MOVE);
+        Sleep(REST);
+    }
+    //linearMove(22, 1.5*MOVE);
+    linearMove(6, MOVE);
+    //Turning towards the sink
+    pivot(-90, 0.75*TURN);
+    //Running into the side wall next to the sink, checking for front microswitch inputs
+    while(microSwitchCheck(0))
+    {
+        leftMotor.SetPercent(0.75*MOVE);
+        rightMotor.SetPercent(0.75*MOVE);
         Sleep(REST);
     }
     leftMotor.Stop();
     rightMotor.Stop();
     //Backing up to align with the sink
-    linearMove(-3, MOVE);
+    linearMove(-2, 0.75*MOVE);
     //Turning to face sink
     pivot(-90, TURN);
-    //Running into sink at a high speed in order to dump tray
-    while(frontLeftSwitch.Value() == true && frontRightSwitch.Value() == true)
+    //Running into sink at a high speed in order to dump tray by checking for front microswitch inputs
+    while(microSwitchCheck(0))
     {
         leftMotor.SetPercent(1.5*MOVE);
         rightMotor.SetPercent(1.5*MOVE);
