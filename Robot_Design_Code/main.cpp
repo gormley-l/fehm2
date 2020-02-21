@@ -27,9 +27,16 @@
 #define LINE_FAR_LEFT 4
 #define OFF_LINE 5
 
-#define LEFT_BREAK 2.4
-#define CENTER_BREAK 2.0
-#define RIGHT_BREAK 2.7
+//Break values for the optosensors to change line following states
+#define LEFT_BREAK 1.2 //formerly 2.4 from exploration 2
+#define CENTER_BREAK 1.3 //formerly 2.0 from exploration 2
+#define RIGHT_BREAK 3.0 //formerly 2.7 from exploration 2
+
+//Defining color integers for CdS readings
+#define RED 0
+#define BLUE 1
+#define NO_COLOR 2
+#define NO_READING 3
 
 //Declarations for IGWAN motors with their max voltage of 9V
 FEHMotor leftMotor(FEHMotor::Motor3,9);
@@ -43,6 +50,12 @@ AnalogInputPin CdS(FEHIO::P0_2);
 AnalogInputPin leftLine(FEHIO::P1_0);
 AnalogInputPin centerLine(FEHIO::P1_1);
 AnalogInputPin rightLine(FEHIO::P1_2);
+
+//Declaration of digital inputs for the microswitches
+DigitalInputPin frontLeftSwitch(FEHIO::P2_0);
+DigitalInputPin frontRightSwitch(FEHIO::P2_1);
+DigitalInputPin backLeftSwitch(FEHIO::P2_2);
+DigitalInputPin backRightSwitch(FEHIO::P2_3);
 
 //Function prototype for moving a linear distance, returns nothing, accepts a distance in inches
 void linearMove(float distance, float speed);
@@ -61,8 +74,11 @@ void lineFollow(int condition);
 //Function prototype for testing line following end conditions
 bool checkCondition(int end);
 
-//Function prototype for jukebox
+//Function prototype for pressing the jukebox button
 void jukebox();
+
+//Function prototype for dumping the tray into the sink
+void tray();
 
 int main(void)
 {
@@ -91,59 +107,24 @@ int main(void)
         }
     }
 
-    //Testing turning
-    /*while(true)
-    {
-        pivot(45, TURN);
-        Sleep(2.0);
-        pivot(-45, TURN);
-        Sleep(2.0);
-    }*/
-
     //Testing course manuverability
     //going up ramp
     linearMove(-11, MOVE);
-    pivot(-135, TURN);
-    linearMove(30, MOVE);
+    pivot(45, TURN);
+    linearMove(-30, 1.5*MOVE);
+    pivot(90, TURN);
+    linearMove(5, MOVE);
+    pivot(-90, TURN);
+    linearMove(5, MOVE);
+    linearMove(-5, MOVE);
 
     //Testing tray dump
     /*linearMove(5, 80);
     linearMove(-5, MOVE);*/
 
+
     //Testing line following
     //lineFollow(2);
-
-
-    /*pivot(-135, TURN);
-    //Moving up ramp
-    LinearMove(8, MOVE);
-    linearMove(30, 1.5*MOVE);
-    pivot(180, TURN);
-    Sleep(1.0);
-    //Moving down ramp
-    linearMove(26, MOVE);
-    pivot(90, TURN);
-    linearMove(10, MOVE);
-    pivot(-90, TURN);
-    linearMove(2, MOVE);
-    if(cdsColor() == 0)
-        {
-            pivot(20, TURN);
-            linearMove(1, MOVE);
-            pivot(-20, TURN);
-            linearMove(3, MOVE);
-
-
-        }else if(cdsColor()==1)
-       {
-            pivot(-20, TURN);
-            linearMove(1, MOVE);
-            pivot(20, TURN);
-            linearMove(3, MOVE);
-
-       }
-    Sleep(2.0);
-    linearMove(-6, MOVE);*/
 
     //Returning to start
     /*pivot(-90, TURN);
@@ -275,19 +256,19 @@ int cdsColor()
     if (CdS.Value() > 0 && CdS.Value() <= 0.90)
     {
         LCD.Clear(FEHLCD::Red);
-        return 0;
+        return RED;
     } else if (CdS.Value() > 0.90 && CdS.Value() <= 1.8)
     {
         LCD.Clear(FEHLCD::Blue);
-        return 1;
+        return BLUE;
     } else if (CdS.Value() > 1.80 && CdS.Value() <= 3.3)
     {
         LCD.Clear(FEHLCD::Black);
         LCD.Write("No colored light detected");
-        return 2;
+        return NO_COLOR;
     } else
     {
-        return 3;
+        return NO_READING;
     }
 }
 
@@ -362,6 +343,7 @@ void lineFollow(int condition)
 //Function definition for checking if the desired end condition for the line following is met
 bool checkCondition(int end)
 {
+    float x,y;
     if (end == 0)
     {
         //running indefinitly
@@ -402,28 +384,72 @@ void jukebox()
     {
         linearMove(0.1, MOVE);
         Sleep(REST);
-    } while(cdsColor() == 2);
+    } while(cdsColor() == NO_COLOR);
 
-    if(cdsColor() == 0)
-        {
-            pivot(45, TURN);
-            linearMove(1, MOVE);
-            pivot(-45, TURN);
-            linearMove(3, MOVE);
-            linearMove(-6, MOVE);
-            pivot(-90, TURN);
-            linearMove(-6, MOVE);
-
-       }else if(cdsColor()==1)
-       {
-            pivot(-45, TURN);
-            linearMove(1, MOVE);
-            pivot(45, TURN);
-            linearMove(3, MOVE);
-            linearMove(-6, MOVE);
-            pivot(-90, TURN);
-            linearMove(-8, MOVE);
-       }
+    switch(cdsColor())
+    {
+    case RED:
+        pivot(45, TURN);
+        linearMove(1, MOVE);
+        pivot(-45, TURN);
+        linearMove(3, MOVE);
+        linearMove(-6, MOVE);
+        pivot(-90, TURN);
+        linearMove(-6, MOVE);
+    case BLUE:
+        pivot(-45, TURN);
+        linearMove(1, MOVE);
+        pivot(45, TURN);
+        linearMove(3, MOVE);
+        linearMove(-6, MOVE);
+        pivot(-90, TURN);
+        linearMove(-8, MOVE);
+    default:
+        //default is blue
+        pivot(-45, TURN);
+        linearMove(1, MOVE);
+        pivot(45, TURN);
+        linearMove(3, MOVE);
+        linearMove(-6, MOVE);
+        pivot(-90, TURN);
+        linearMove(-8, MOVE);
+    }
     Sleep(2.0);
 
+}
+
+//Function definition for dumping the tray
+void tray()
+{
+    //This function is set up to start at the beginning and move the robot up the ramp and dump the tray at the sink
+    //Going up ramp from starting position
+    linearMove(11, MOVE);
+    pivot(45, TURN);
+    linearMove(30, 1.5*MOVE);
+    //Turning towards the sink
+    pivot(-90, TURN);
+    //Running into the side wall next to the sink
+    while(frontLeftSwitch.Value() == true && frontRightSwitch.Value() == true)
+    {
+        leftMotor.SetPercent(MOVE);
+        rightMotor.SetPercent(MOVE);
+        Sleep(REST);
+    }
+    leftMotor.Stop();
+    rightMotor.Stop();
+    //Backing up to align with the sink
+    linearMove(-3, MOVE);
+    //Turning to face sink
+    pivot(-90, TURN);
+    //Running into sink at a high speed in order to dump tray
+    while(frontLeftSwitch.Value() == true && frontRightSwitch.Value() == true)
+    {
+        leftMotor.SetPercent(1.5*MOVE);
+        rightMotor.SetPercent(1.5*MOVE);
+        Sleep(REST);
+    }
+    leftMotor.Stop();
+    rightMotor.Stop();
+    //Backing up off of the sink in order to allow for easy movement
+    linearMove(-5, MOVE);
 }
