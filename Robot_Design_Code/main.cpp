@@ -20,11 +20,16 @@
 #define REST 0.1
 
 //Definition for line following switch cases
-#define on_line 0
-#define line_on_right 1
-#define line_on_left 2
-#define line_far_right 3
-#define line_far_left 4
+#define ON_LINE 0
+#define LINE_ON_RIGHT 1
+#define LINE_ON_LEFT 2
+#define LINE_FAR_RIGHT 3
+#define LINE_FAR_LEFT 4
+#define OFF_LINE 5
+
+#define LEFT_BREAK 2.4
+#define CENTER_BREAK 2.0
+#define RIGHT_BREAK 2.7
 
 //Declarations for IGWAN motors with their max voltage of 9V
 FEHMotor leftMotor(FEHMotor::Motor3,9);
@@ -50,8 +55,11 @@ void pivot(float degrees, float speed);
 //If it returns a 3, it could not get any reading from the CdS cell, or some other error has occured
 int cdsColor();
 
-//Function prototype for line following
-void lineFollow();
+//Function prototype for line following, accepts integers to determine its end conition, 0 is indefinite, 1 is microswitches, 2 is screen touch
+void lineFollow(int condition);
+
+//Function prototype for testing line following end conditions
+bool checkCondition(int end);
 
 //Function prototype for jukebox
 void jukebox();
@@ -72,6 +80,8 @@ int main(void)
             break;
         }
     }
+
+    //Waiting for start light
     LCD.WriteLine("Waiting for light to continue");
     while(true)
     {
@@ -91,9 +101,17 @@ int main(void)
     }*/
 
     //Testing course manuverability
-    //Moving off of start
+    //going up ramp
     linearMove(-11, MOVE);
     pivot(-135, TURN);
+    linearMove(30, MOVE);
+
+    //Testing tray dump
+    /*linearMove(5, 80);
+    linearMove(-5, MOVE);*/
+
+    //Testing line following
+    //lineFollow(2);
 
 
     /*pivot(-135, TURN);
@@ -274,59 +292,103 @@ int cdsColor()
 }
 
 //Function definition for following a line
-void lineFollow()
+void lineFollow(int condition)
 {
-    int state = line_far_left;
+    //initilizing state variable
+    int state;
+
+    //print statement to show what robot is doing
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Following Line");
-    while(true)
+
+    //Updating state to turn based on optosensor inputs. > means that the sensor is seeing dark, < is the sensor seeing light
+    if(rightLine.Value() < RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+    {
+        state = ON_LINE;
+    } else if (rightLine.Value() > RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+    {
+        state = LINE_ON_RIGHT;
+    }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() > LEFT_BREAK)
+    {
+        state = LINE_ON_LEFT;
+    }else if (rightLine.Value() > RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+    {
+        state = LINE_FAR_RIGHT;
+    }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() > LEFT_BREAK)
+    {
+        state = LINE_FAR_LEFT;
+    }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+    {
+        state = OFF_LINE;
+    }
+
+    //This loop will call the checkCondition function to determine when to break, with condition 0 running indefinitly, 1 running until a microswitch input, 2 a touchscreen input
+    while(checkCondition(condition))
     {
         //Setting state of line based on where sensors are located in relationship to the line
         switch(state)
         {
-        case on_line:
+        case ON_LINE:
             rightMotor.SetPercent(10);
             leftMotor.SetPercent(10);
             break;
-        case line_on_right:
+        case LINE_ON_RIGHT:
             rightMotor.SetPercent(10);
             leftMotor.SetPercent(20);
             break;
-        case line_on_left:
+        case LINE_ON_LEFT:
             rightMotor.SetPercent(20);
             leftMotor.SetPercent(10);
             break;
-        case line_far_right:
+        case LINE_FAR_RIGHT:
             rightMotor.SetPercent(10);
             leftMotor.SetPercent(30);
             break;
-        case line_far_left:
+        case LINE_FAR_LEFT:
             rightMotor.SetPercent(30);
             leftMotor.SetPercent(10);
             break;
+        case OFF_LINE:
+            rightMotor.Stop();
+            leftMotor.Stop();
         default:
             rightMotor.Stop();
             leftMotor.Stop();
             break;
         }
-        //Updating state to turn based on optosensor inputs
-        if(rightLine.Value() < 2.7 && centerLine.Value() > 2.0 && leftLine.Value() < 2.4)
-        {
-            state = on_line;
-        } else if (rightLine.Value() > 2.7 && centerLine.Value() > 2.0 && leftLine.Value() < 2.4)
-        {
-            state = line_on_right;
-        }else if (rightLine.Value() < 2.7 && centerLine.Value() > 2.0 && leftLine.Value() > 2.4)
-        {
-            state = line_on_left;
-        }else if (rightLine.Value() > 2.7 && centerLine.Value() < 2.0 && leftLine.Value() < 2.4)
-        {
-            state = line_far_right;
-        }else if (rightLine.Value() < 2.7 && centerLine.Value() < 2.0 && leftLine.Value() > 2.4)
-        {
-            state = line_far_left;
-        }
     }
+}
+
+//Function definition for checking if the desired end condition for the line following is met
+bool checkCondition(int end)
+{
+    if (end == 0)
+    {
+        //running indefinitly
+        return true;
+    }else if (end == 1)
+    {
+        //code for ending based on microswitch input
+        LCD.WriteLine("Code for microswitch end condition incomplete");
+        LCD.WriteLine("Skipping line following");
+        return false;
+    }else if (end == 2)
+    {
+        //code for ending based on screen touch
+        if (LCD.Touch(&x,&y))
+        {
+            return false;
+        }else
+        {
+            return true;
+        }
+    }else
+    {
+        LCD.WriteLine("No ending condition for line following entered");
+        LCD.WriteLine("Skipping line following");
+        return false;
+    }
+
 }
 
 void jukebox()
