@@ -370,17 +370,16 @@ void lineFollow(int condition)
 }
 
 //Function definition for checking if the desired end condition for the line following is met
-//This can be made into a switch case
 bool checkCondition(int end)
 {
     float x,y;
-    if (end == 0)
+    switch(end)
     {
-        //running indefinitly
+    case 0:
+        //No end condition
         return true;
-    }else if (end == 1)
-    {
-        //code for ending based on microswitch input
+    case 1:
+        //Microswitch end condition
         if (microSwitchCheck(1) == false)
         {
             return false;
@@ -388,9 +387,8 @@ bool checkCondition(int end)
         {
             return true;
         }
-    }else if (end == 2)
-    {
-        //code for ending based on screen touch
+    case 2:
+        //Touchscreen end condition (test case)
         if (LCD.Touch(&x,&y))
         {
             return false;
@@ -398,13 +396,11 @@ bool checkCondition(int end)
         {
             return true;
         }
-    }else
-    {
+    default:
         LCD.WriteLine("No ending condition for line following entered");
         LCD.WriteLine("Skipping line following");
         return false;
     }
-
 }
 
 //Function definition that checks for microswitch values on the front or back of the robot
@@ -432,7 +428,7 @@ bool microSwitchCheck(int side)
             return true;
         }
     default:
-        LCD.WriteLine("Inproper integer input for checking microswitches");
+        LCD.WriteLine("Improper integer input for checking microswitches");
         return false;
     }
 }
