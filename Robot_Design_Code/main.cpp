@@ -38,6 +38,12 @@
 #define NO_COLOR 2
 #define NO_READING 3
 
+//Defining min and max for servos
+#define SERVO_ARM_MAX 50
+#define SERVO_ARM_MIN 40
+#define SERVO_FORK_MAX 50
+#define SERVO_FORK_MIN 40
+
 //Declarations for IGWAN motors with their max voltage of 9V
 FEHMotor leftMotor(FEHMotor::Motor3,9);
 FEHMotor rightMotor(FEHMotor::Motor2,9);
@@ -59,6 +65,10 @@ DigitalInputPin frontLeftSwitch(FEHIO::P2_0);
 DigitalInputPin frontRightSwitch(FEHIO::P2_1);
 DigitalInputPin backLeftSwitch(FEHIO::P2_2);
 DigitalInputPin backRightSwitch(FEHIO::P2_3);
+
+//Delcaring servos
+FEHServo servo_arm (FEHSERVO::Servo0);
+FEHServo servo_fork (FEHSERVO::Servo1);
 
 //Function prototype for moving a linear distance, returns nothing, accepts a distance in inches
 void linearMove(float distance, float speed);
@@ -89,10 +99,25 @@ void jukebox();
 //Function prototype for dumping the tray into the sink
 void tray();
 
+//Function prototype for moving the ticket
+void ticket(FEHSERVO motor);
+
 int main(void)
 {
-
+    //Variable declarations
     float x,y;
+
+    //Setting servo max and mins
+    servo_arm.SetMax(SERVO_ARM_MAX);
+    servo_arm.SetMin(SERVO_ARM_MIN);
+    servo_fork.SetMax(SERVO_FORK_MAX);
+    servo_fork.SetMin(SERVO_FORK_MIN);
+
+    //Pre-run setup
+    //Resetting servo positions
+    servo_arm.SetDegree(0.0);
+    servo_fork.SetDegree(0.0);
+
     //Waiting for a touch input
     LCD.Clear(FEHLCD::Black);
     LCD.SetFontColor(FEHLCD::White);
@@ -260,7 +285,6 @@ void pivot(float degrees, float speed)
 //Function definition for checking the color that the CdS cell sees
 int cdsColor()
 {
-    LCD.Write("Checking color from CdS Cell");
     /*Simple if checks to determine what color the CdS cell sees based off of measured ranges.
     Will change the LCD display to match the color it detects*/
     if (CdS.Value() > 0 && CdS.Value() <= 0.90)
@@ -429,12 +453,14 @@ bool microSwitchCheck(int side)
         }
     default:
         LCD.WriteLine("Improper integer input for checking microswitches");
+        Sleep(3.0);
         return false;
     }
 }
 
 void jukebox()
 {
+    //Moving unill the robot runs into the wall
     while(microSwitchCheck(0))
     {
         leftMotor.SetPercent(MOVE);
@@ -443,43 +469,69 @@ void jukebox()
     }
     leftMotor.Stop();
     rightMotor.Stop();
+    //Backing up off the wall
     linearMove(-4, MOVE);
+    //Turning to face the jukebox
     pivot(-90, TURN);
+    //Moving forward in small increments untill the CdS cell reads a red or blue light
     do
     {
         linearMove(0.1, MOVE);
         Sleep(REST);
     } while(cdsColor() == NO_COLOR);
-
+    //Switch case for red and blue lights
     switch(cdsColor())
     {
     case CDSRED:
+        //Turn left a bit
         pivot(45, TURN);
+        //Move forward an inch
         linearMove(1, MOVE);
+        //Re-align with the jukebox's red button
         pivot(-45, TURN);
+        //Run into red button
         linearMove(3, MOVE);
+        //Back off of button
         linearMove(-6, MOVE);
+        //Turn towards the final zone
         pivot(-90, TURN);
+        //Move towards the final zone
         linearMove(-6, MOVE);
     case CDSBLUE:
+        //Turn right a bit
         pivot(-45, TURN);
+        //Move for an inch
         linearMove(1, MOVE);
+        //Re-align with the jukebox's blue button
         pivot(45, TURN);
+        //Run into blue button
         linearMove(3, MOVE);
+        //Back off of button
         linearMove(-6, MOVE);
+        //Turn towards final zone
         pivot(-90, TURN);
+        //Move towards final zone (red and move movements are different because the blue is further away from the final zone)
         linearMove(-8, MOVE);
     default:
         //default is blue
+        //Turn right a bit
         pivot(-45, TURN);
+        //Move for an inch
         linearMove(1, MOVE);
+        //Re-align with the jukebox's blue button
         pivot(45, TURN);
+        //Run into blue button
         linearMove(3, MOVE);
+        //Back off of button
         linearMove(-6, MOVE);
+        //Turn towards final zone
         pivot(-90, TURN);
+        //Move towards final zone (red and move movements are different because the blue is further away from the final zone)
         linearMove(-8, MOVE);
     }
+    //Turn and align with the final button
     pivot(45, TURN);
+    //Run into the finish button
     linearMove(13, MOVE);
     Sleep(REST);
 }
@@ -487,9 +539,9 @@ void jukebox()
 //Function definition for dumping the tray
 void tray()
 {
-    //This float is exclusively required to go up the ramp at a high speed but slow down to a slower speed without stopping to prevent the tray from flying off
+    //This float is exclusively required to go up the ramp at a high speed but slow down to a slower speed without stopping to prevent the tray from flying off, the value in abs() is the distance being traveled
     float ramp = (318.0/(WHEEL*PI))*abs(22);
-    //This function is set up to start at the beginning and move the robot up the ramp and dump the tray at the sink
+    //This function is set up to start at the beginning of the course and move the robot up the ramp and dump the tray at the sink
     //Going up ramp from starting position
     linearMove(10, MOVE);
     pivot(45, TURN);
@@ -529,4 +581,42 @@ void tray()
     rightMotor.Stop();
     //Backing up off of the sink in order to allow for easy movement
     linearMove(-5, MOVE);
+}
+
+//Function definition for moving the ticket using the servo arm
+void ticket()
+{
+    //Moving untill the robot hits the wall by the ticket
+    while(microSwitchCheck(0))
+    {
+        leftMotor.SetPercent(1.5*MOVE);
+        rightMotor.SetPercent(1.5*MOVE);
+        Sleep(REST);
+    }
+    leftMotor.Stop();
+    rightMotor.Stop();
+    //Backing up off the wall
+    linearMove(-2, MOVE);
+    //Turning to position the servo arm
+    pivot(135, TURN);
+    //Deploying the servo arm
+    servo_arm.SetDegree(100);
+    //Inserting the servo arm into the ticket slot
+    pivot(45, TURN);
+    //Moving forward with the ticket
+    linearMove(6, MOVE);
+    //Removing the servo arm from the ticket slot
+    pivot(-45, TURN);
+    //Reseting the servo arm
+    servo_arm.SetDegree(0);
+    //Re-aligning the robot
+    pivot(45, TURN);
+    //Moving towards the ramp
+    linearMove(8, MOVE);
+    //Turning to face the ramp
+    pivot(90, TURN);
+    //Going down the ramp
+    linearMove(22, MOVE);
+    //Turning to face the jukebox
+    pivot(90, TURN);
 }
