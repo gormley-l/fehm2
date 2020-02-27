@@ -4,6 +4,7 @@
 #include <FEHMotor.h>
 #include <FEHServo.h>
 #include <FEHRPS.h>
+#include <FEHSD.h>
 #include <math.h>
 
 //Defining pi for consistency and ease of use
@@ -39,8 +40,8 @@
 #define NO_READING 3
 
 //Defining min and max for servos
-#define SERVO_ARM_MAX 50
-#define SERVO_ARM_MIN 40
+#define SERVO_ARM_MAX 2350
+#define SERVO_ARM_MIN 500
 #define SERVO_FORK_MAX 50
 #define SERVO_FORK_MIN 40
 
@@ -67,8 +68,8 @@ DigitalInputPin backLeftSwitch(FEHIO::P2_2);
 DigitalInputPin backRightSwitch(FEHIO::P2_3);
 
 //Delcaring servos
-FEHServo servo_arm (FEHSERVO::Servo0);
-FEHServo servo_fork (FEHSERVO::Servo1);
+FEHServo servo_arm(FEHServo::Servo0);
+FEHServo servo_fork(FEHServo::Servo1);
 
 //Function prototype for moving a linear distance, returns nothing, accepts a distance in inches
 void linearMove(float distance, float speed);
@@ -100,7 +101,7 @@ void jukebox();
 void tray();
 
 //Function prototype for moving the ticket
-void ticket(FEHSERVO motor);
+void ticket();
 
 int main(void)
 {
@@ -110,13 +111,13 @@ int main(void)
     //Setting servo max and mins
     servo_arm.SetMax(SERVO_ARM_MAX);
     servo_arm.SetMin(SERVO_ARM_MIN);
-    servo_fork.SetMax(SERVO_FORK_MAX);
-    servo_fork.SetMin(SERVO_FORK_MIN);
+    //servo_fork.SetMax(SERVO_FORK_MAX);
+    //servo_fork.SetMin(SERVO_FORK_MIN);
 
     //Pre-run setup
     //Resetting servo positions
     servo_arm.SetDegree(0.0);
-    servo_fork.SetDegree(0.0);
+    //servo_fork.SetDegree(0.0);
 
     //Waiting for a touch input
     LCD.Clear(FEHLCD::Black);
@@ -142,46 +143,12 @@ int main(void)
     }
 
     tray();
-    //Testing course manuverability
-    //going up ramp
-    /*linearMove(-11, MOVE);
-    pivot(45, TURN);
-    linearMove(-30, 1.5*MOVE);
+    ticket();
     pivot(90, TURN);
-    linearMove(5, MOVE);
-    pivot(-90, TURN);
-    linearMove(5, MOVE);
-    linearMove(-5, MOVE);*/
-
-    //Testing tray dump
-    /*linearMove(5, 80);
-    linearMove(-5, MOVE);*/
+    linearMove(22, MOVE);
 
 
-    //Testing line following
-    //lineFollow(2);
-
-    //Returning to start
-    /*pivot(-90, TURN);
-    linearMove(12, MOVE);
-    pivot(45, TURN);
-    linearMove(14, MOVE);*/
-
-   //Printing CdS reading to screen untill screen is pressed again
-   /* LCD.Clear(FEHLCD::Black);
-    LCD.WriteLine("Checking CdS Cell function");
-    while(true)
-    {
-        LCD.WriteLine(CdS.Value());
-        if(LCD.Touch(&x,&y))
-        {
-            LCD.WriteLine("Ending CdS reading...");
-            Sleep(1.0);
-            break;
-        }
-        Sleep(REST);
-    }*/
-
+    //Printing statement to show code completion
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Done.");
     return 0;
@@ -205,20 +172,18 @@ void linearMove(float distance, float speed)
     if (distance>0)
     {
         //Move forward for number of counts
+        rightMotor.SetPercent(speed);
+        leftMotor.SetPercent(speed);
         while(leftEncoder.Counts() < x)
         {
-            rightMotor.SetPercent(speed);
-            leftMotor.SetPercent(speed);
-            Sleep(REST);
         }
     }else if (distance<0)
     {
         //Move backward for number of counts
+        rightMotor.SetPercent(-speed);
+        leftMotor.SetPercent(-speed);
         while(leftEncoder.Counts() < x)
         {
-            rightMotor.SetPercent(-speed);
-            leftMotor.SetPercent(-speed);
-            Sleep(REST);
         }
     }
     //Stop motors
@@ -240,8 +205,7 @@ void pivot(float degrees, float speed)
     //Temp variable
     float x;
     //Converts degree input to number of counts the motors need to turn in opposite directions for
-    x = ((318*W2W)/(360*WHEEL))*abs(degrees);//*(0.0123*log(abs(degrees))+0.9262);
-    //y = ((318*W2W)/(360*WHEEL))*abs(degrees);//*(0.0117*log(abs(degrees))+0.8993);
+    x = ((318*W2W)/(360*WHEEL))*abs(degrees);
     //Reset counts for safety
     leftEncoder.ResetCounts();
     rightEncoder.ResetCounts();
@@ -253,20 +217,18 @@ void pivot(float degrees, float speed)
     if (degrees > 0)
     {
         //Turn right for the number of counts
+        rightMotor.SetPercent(-speed);
+        leftMotor.SetPercent(speed);
         while ((leftEncoder.Counts()) <= x)
         {
-            rightMotor.SetPercent(-speed);
-            leftMotor.SetPercent(speed);
-            Sleep(REST);
         }
     } else if (degrees < 0)
     {
         //Turn left for the number of counts
+        rightMotor.SetPercent(speed);
+        leftMotor.SetPercent(-speed);
         while ((rightEncoder.Counts()) <= x)
         {
-            rightMotor.SetPercent(speed);
-            leftMotor.SetPercent(-speed);
-            Sleep(REST);
         }
     }
     //Stop motors
@@ -461,11 +423,10 @@ bool microSwitchCheck(int side)
 void jukebox()
 {
     //Moving unill the robot runs into the wall
+    leftMotor.SetPercent(MOVE);
+    rightMotor.SetPercent(MOVE);
     while(microSwitchCheck(0))
     {
-        leftMotor.SetPercent(MOVE);
-        rightMotor.SetPercent(MOVE);
-        Sleep(REST);
     }
     leftMotor.Stop();
     rightMotor.Stop();
@@ -540,69 +501,82 @@ void jukebox()
 void tray()
 {
     //This float is exclusively required to go up the ramp at a high speed but slow down to a slower speed without stopping to prevent the tray from flying off, the value in abs() is the distance being traveled
+    float start = (318.0/(WHEEL*PI))*abs(2);
     float ramp = (318.0/(WHEEL*PI))*abs(22);
     //This function is set up to start at the beginning of the course and move the robot up the ramp and dump the tray at the sink
     //Going up ramp from starting position
-    linearMove(10, MOVE);
+    rightMotor.SetPercent(0.65*MOVE);
+    leftMotor.SetPercent(0.65*MOVE);
+    while(leftEncoder.Counts() < start)
+    {
+    }
+    linearMove(8, MOVE);
     pivot(45, TURN);
     //A chunk of the linearMove function is used here in order to move a set distance to get up the ramp, however, it is modified to not stop the motors so that the robot can
     //instead switch to a slower speed without stopping in order to prevent the tray from flying off of the robot
+    rightMotor.SetPercent(1.5*MOVE);
+    leftMotor.SetPercent(1.5*MOVE);
     while(leftEncoder.Counts() < ramp)
     {
-        rightMotor.SetPercent(1.5*MOVE);
-        leftMotor.SetPercent(1.5*MOVE);
-        Sleep(REST);
     }
     //linearMove(22, 1.5*MOVE);
-    linearMove(6, MOVE);
+    linearMove(8, MOVE);
     //Turning towards the sink
     pivot(-90, 0.75*TURN);
     //Running into the side wall next to the sink, checking for front microswitch inputs
+    leftMotor.SetPercent(0.75*MOVE);
+    rightMotor.SetPercent(0.75*MOVE);
     while(microSwitchCheck(0))
     {
-        leftMotor.SetPercent(0.75*MOVE);
-        rightMotor.SetPercent(0.75*MOVE);
-        Sleep(REST);
     }
     leftMotor.Stop();
     rightMotor.Stop();
     //Backing up to align with the sink
-    linearMove(-2, 0.75*MOVE);
+    linearMove(-3, 0.75*MOVE);
     //Turning to face sink
     pivot(-90, TURN);
     //Running into sink at a high speed in order to dump tray by checking for front microswitch inputs
+    leftMotor.SetPercent(1.5*MOVE);
+    rightMotor.SetPercent(1.5*MOVE);
     while(microSwitchCheck(0))
     {
-        leftMotor.SetPercent(1.5*MOVE);
-        rightMotor.SetPercent(1.5*MOVE);
-        Sleep(REST);
     }
     leftMotor.Stop();
     rightMotor.Stop();
     //Backing up off of the sink in order to allow for easy movement
-    linearMove(-5, MOVE);
+    linearMove(-10, MOVE);
+    pivot(-90, TURN);
+    leftMotor.SetPercent(-MOVE);
+    rightMotor.SetPercent(-MOVE);
+    while(backLeftSwitch.Value() == true)
+    {
+    }
+    leftMotor.Stop();
+    rightMotor.Stop();
 }
 
 //Function definition for moving the ticket using the servo arm
 void ticket()
 {
     //Moving untill the robot hits the wall by the ticket
+    leftMotor.SetPercent(MOVE);
+    rightMotor.SetPercent(MOVE);
     while(microSwitchCheck(0))
     {
-        leftMotor.SetPercent(1.5*MOVE);
-        rightMotor.SetPercent(1.5*MOVE);
-        Sleep(REST);
     }
     leftMotor.Stop();
     rightMotor.Stop();
     //Backing up off the wall
-    linearMove(-2, MOVE);
+    linearMove(-5, MOVE);
     //Turning to position the servo arm
-    pivot(135, TURN);
+    pivot(90, TURN);
+    linearMove(13, MOVE);
+    pivot(45, TURN);
     //Deploying the servo arm
     servo_arm.SetDegree(100);
     //Inserting the servo arm into the ticket slot
-    pivot(45, TURN);
+    pivot(30, TURN);
+    pivot(15, TURN);
     //Moving forward with the ticket
     linearMove(6, MOVE);
     //Removing the servo arm from the ticket slot
@@ -612,11 +586,11 @@ void ticket()
     //Re-aligning the robot
     pivot(45, TURN);
     //Moving towards the ramp
-    linearMove(8, MOVE);
+    /*linearMove(8, MOVE);
     //Turning to face the ramp
     pivot(90, TURN);
     //Going down the ramp
     linearMove(22, MOVE);
     //Turning to face the jukebox
-    pivot(90, TURN);
+    pivot(90, TURN);*/
 }
