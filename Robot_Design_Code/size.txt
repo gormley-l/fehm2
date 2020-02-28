@@ -1,0 +1,2 @@
+   text	   data	    bss	    dec	    hex	filename
+  49588	   5832	   9400	  64820	   fd34	../Robot_Design_Code.elf
