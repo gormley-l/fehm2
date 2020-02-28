@@ -144,10 +144,13 @@ int main(void)
 
     tray();
     ticket();
-    linearMove(-8, MOVE);
+    rightMotor.SetPercent(-MOVE);
+    leftMotor.SetPercent(-MOVE);
     while(backLeftSwitch.Value() == true)
     {
     }
+    rightMotor.Stop();
+    leftMotor.Stop();
     linearMove(2,MOVE);
     pivot(90, TURN);
     linearMove(20,MOVE);
@@ -522,8 +525,7 @@ void tray()
     while(leftEncoder.Counts() < ramp)
     {
     }
-    //linearMove(22, 1.5*MOVE);
-    linearMove(8, MOVE);
+    linearMove(9, MOVE);
     //Turning towards the sink
     pivot(-90, 0.75*TURN);
     //Running into the side wall next to the sink, checking for front microswitch inputs
@@ -583,7 +585,7 @@ void ticket()
     linearMove(-2,MOVE);
      pivot(10, TURN);
     //Moving forward with the ticket
-    linearMove(6, MOVE);
+    linearMove(5, MOVE);
     //Removing the servo arm from the ticket slot
     pivot(-45, TURN);
     //Reseting the servo arm
