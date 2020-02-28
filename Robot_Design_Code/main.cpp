@@ -144,10 +144,13 @@ int main(void)
 
     tray();
     ticket();
+    linearMove(-8, MOVE);
+    while(backLeftSwitch.Value() == true)
+    {
+    }
+    linearMove(2,MOVE);
     pivot(90, TURN);
-    linearMove(22, MOVE);
-
-
+    linearMove(20,MOVE);
     //Printing statement to show code completion
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Done.");
@@ -567,7 +570,7 @@ void ticket()
     leftMotor.Stop();
     rightMotor.Stop();
     //Backing up off the wall
-    linearMove(-5, MOVE);
+    linearMove(-6.5, MOVE);
     //Turning to position the servo arm
     pivot(90, TURN);
     linearMove(13, MOVE);
@@ -576,7 +579,9 @@ void ticket()
     servo_arm.SetDegree(100);
     //Inserting the servo arm into the ticket slot
     pivot(30, TURN);
-    pivot(15, TURN);
+
+    linearMove(-2,MOVE);
+     pivot(10, TURN);
     //Moving forward with the ticket
     linearMove(6, MOVE);
     //Removing the servo arm from the ticket slot
