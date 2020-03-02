@@ -29,9 +29,9 @@
 #define OFF_LINE 5
 
 //Break values for the optosensors to change line following states
-#define LEFT_BREAK 1.2 //formerly 2.4 from exploration 2
-#define CENTER_BREAK 1.3 //formerly 2.0 from exploration 2
-#define RIGHT_BREAK 3.0 //formerly 2.7 from exploration 2
+#define LEFT_BREAK 1.15 //formerly 2.4 from exploration 2
+#define CENTER_BREAK 1.9 //formerly 2.0 from exploration 2
+#define RIGHT_BREAK 2.75//formerly 2.7 from exploration 2
 
 //Defining color integers for CdS readings
 #define CDSRED 0
@@ -103,6 +103,9 @@ void tray();
 //Function prototype for moving the ticket
 void ticket();
 
+//Function prottype for burger flip
+void burger();
+
 int main(void)
 {
     //Variable declarations
@@ -131,6 +134,7 @@ int main(void)
             break;
         }
     }
+    //lineFollow(0);
 
     //Waiting for start light
     LCD.WriteLine("Waiting for light to continue");
@@ -142,6 +146,8 @@ int main(void)
         }
     }
 
+    burger();
+    /*
     tray();
     ticket();
     rightMotor.SetPercent(-MOVE);
@@ -154,6 +160,7 @@ int main(void)
     linearMove(2,MOVE);
     pivot(90, TURN);
     linearMove(20,MOVE);
+    */
     //Printing statement to show code completion
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Done.");
@@ -303,56 +310,57 @@ void lineFollow(int condition)
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Following Line");
 
-    //Updating state to turn based on optosensor inputs. > means that the sensor is seeing dark, < is the sensor seeing light
-    if(rightLine.Value() < RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
-    {
-        state = ON_LINE;
-    } else if (rightLine.Value() > RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
-    {
-        state = LINE_ON_RIGHT;
-    }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() > LEFT_BREAK)
-    {
-        state = LINE_ON_LEFT;
-    }else if (rightLine.Value() > RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
-    {
-        state = LINE_FAR_RIGHT;
-    }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() > LEFT_BREAK)
-    {
-        state = LINE_FAR_LEFT;
-    }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
-    {
-        state = OFF_LINE;
-    }
-
     //This loop will call the checkCondition function to determine when to break, with condition 0 running indefinitly, 1 running until a microswitch input, 2 a touchscreen input
     while(checkCondition(condition))
     {
+        //Updating state to turn based on optosensor inputs. > means that the sensor is seeing dark, < is the sensor seeing light
+        if(rightLine.Value() < RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+            state = ON_LINE;
+        } else if (rightLine.Value() > RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+            state = LINE_ON_RIGHT;
+        }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() > LEFT_BREAK)
+        {
+            state = LINE_ON_LEFT;
+        }else if (rightLine.Value() > RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+            state = LINE_FAR_RIGHT;
+        }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() > LEFT_BREAK)
+        {
+            state = LINE_FAR_LEFT;
+        }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+            state = OFF_LINE;
+        }
+
         //Setting state of line based on where sensors are located in relationship to the line
         switch(state)
         {
         case ON_LINE:
-            rightMotor.SetPercent(10);
-            leftMotor.SetPercent(10);
+            rightMotor.SetPercent(-10);
+            leftMotor.SetPercent(-10);
             break;
         case LINE_ON_RIGHT:
-            rightMotor.SetPercent(10);
-            leftMotor.SetPercent(20);
+            rightMotor.SetPercent(-20);
+            leftMotor.SetPercent(-10);
             break;
         case LINE_ON_LEFT:
-            rightMotor.SetPercent(20);
-            leftMotor.SetPercent(10);
+            rightMotor.SetPercent(-10);
+            leftMotor.SetPercent(-20);
             break;
         case LINE_FAR_RIGHT:
-            rightMotor.SetPercent(10);
-            leftMotor.SetPercent(30);
+            rightMotor.SetPercent(-30);
+            leftMotor.SetPercent(-10);
             break;
         case LINE_FAR_LEFT:
-            rightMotor.SetPercent(30);
-            leftMotor.SetPercent(10);
+            rightMotor.SetPercent(-10);
+            leftMotor.SetPercent(-30);
             break;
         case OFF_LINE:
             rightMotor.Stop();
             leftMotor.Stop();
+            break;
         default:
             rightMotor.Stop();
             leftMotor.Stop();
@@ -600,4 +608,39 @@ void ticket()
     linearMove(22, MOVE);
     //Turning to face the jukebox
     pivot(90, TURN);*/
+}
+
+void burger()
+{
+    //This float is exclusively required to go up the ramp at a high speed but slow down to a slower speed without stopping to prevent the tray from flying off, the value in abs() is the distance being traveled
+    float start = (318.0/(WHEEL*PI))*abs(2);
+    float ramp = (318.0/(WHEEL*PI))*abs(22);
+    //This function is set up to start at the beginning of the course and move the robot up the ramp and dump the tray at the sink
+    //Going up ramp from starting position
+    rightMotor.SetPercent(0.65*MOVE);
+    leftMotor.SetPercent(0.65*MOVE);
+    while(leftEncoder.Counts() < start)
+    {
+    }
+    linearMove(8, MOVE);
+    pivot(45, TURN);
+    //A chunk of the linearMove function is used here in order to move a set distance to get up the ramp, however, it is modified to not stop the motors so that the robot can
+    //instead switch to a slower speed without stopping in order to prevent the tray from flying off of the robot
+    rightMotor.SetPercent(1.5*MOVE);
+    leftMotor.SetPercent(1.5*MOVE);
+    while(leftEncoder.Counts() < ramp)
+    {
+    }
+    linearMove(6, MOVE);
+    pivot(90, TURN);
+    leftMotor.SetPercent(MOVE);
+    rightMotor.SetPercent(MOVE);
+    while(microSwitchCheck(0))
+    {
+    }
+    leftMotor.Stop();
+    rightMotor.Stop();
+    linearMove(-2,MOVE);
+    pivot(90, TURN);
+    linearMove(-16,MOVE);
 }
