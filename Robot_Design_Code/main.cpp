@@ -29,9 +29,9 @@
 #define OFF_LINE 5
 
 //Break values for the optosensors to change line following states
-#define LEFT_BREAK 1.15 //formerly 2.4 from exploration 2
-#define CENTER_BREAK 1.9 //formerly 2.0 from exploration 2
-#define RIGHT_BREAK 2.75//formerly 2.7 from exploration 2
+#define LEFT_BREAK 1.0 //formerly 2.4 from exploration 2
+#define CENTER_BREAK 1.27 //formerly 2.0 from exploration 2
+#define RIGHT_BREAK 2.68 //formerly 2.7 from exploration 2
 
 //Defining color integers for CdS readings
 #define CDSRED 0
@@ -64,8 +64,8 @@ AnalogInputPin rightLine(FEHIO::P1_2);
 //Declaration of digital inputs for the microswitches
 DigitalInputPin frontLeftSwitch(FEHIO::P2_0);
 DigitalInputPin frontRightSwitch(FEHIO::P2_1);
-DigitalInputPin backLeftSwitch(FEHIO::P2_2);
-DigitalInputPin backRightSwitch(FEHIO::P2_3);
+DigitalInputPin backSwitch(FEHIO::P2_2);
+DigitalInputPin forkSwitch(FEHIO::P2_3);
 
 //Delcaring servos
 FEHServo servo_arm(FEHServo::Servo0);
@@ -103,8 +103,11 @@ void tray();
 //Function prototype for moving the ticket
 void ticket();
 
-//Function prottype for burger flip
+//Function prototype for burger flip
 void burger();
+
+//Function prototype for the first icecream flip
+void icecream_1(int lever);
 
 int main(void)
 {
@@ -147,6 +150,10 @@ int main(void)
     }
 
     burger();
+    lineFollow(2);
+
+    pivot(-45, TURN);
+    linearMove(12, MOVE);
     /*
     tray();
     ticket();
@@ -380,7 +387,7 @@ bool checkCondition(int end)
         return true;
     case 1:
         //Microswitch end condition
-        if (microSwitchCheck(1) == false)
+        if (backSwitch == false)
         {
             return false;
         } else
@@ -388,8 +395,8 @@ bool checkCondition(int end)
             return true;
         }
     case 2:
-        //Touchscreen end condition (test case)
-        if (LCD.Touch(&x,&y))
+        //Off of the line
+        if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
         {
             return false;
         }else
@@ -556,16 +563,20 @@ void tray()
     }
     leftMotor.Stop();
     rightMotor.Stop();
+    Sleep(REST);
+    lineFollow(2);
+    /* Code for performance test 2
     //Backing up off of the sink in order to allow for easy movement
     linearMove(-10, MOVE);
     pivot(-90, TURN);
     leftMotor.SetPercent(-MOVE);
     rightMotor.SetPercent(-MOVE);
-    while(backLeftSwitch.Value() == true)
+    while(backSwitch.Value() == true)
     {
     }
     leftMotor.Stop();
     rightMotor.Stop();
+    */
 }
 
 //Function definition for moving the ticket using the servo arm
@@ -632,7 +643,9 @@ void burger()
     {
     }
     linearMove(6, MOVE);
+    //Turning towards ticket
     pivot(90, TURN);
+    //Moving until the front microswitches activate off of the wall
     leftMotor.SetPercent(MOVE);
     rightMotor.SetPercent(MOVE);
     while(microSwitchCheck(0))
@@ -640,7 +653,28 @@ void burger()
     }
     leftMotor.Stop();
     rightMotor.Stop();
+    //Backing off of the wall
     linearMove(-2,MOVE);
+    //Turning so that the back of the robot is facing the burger station
     pivot(90, TURN);
+    //Moving the robot up to the burger staton
     linearMove(-16,MOVE);
+    //Slowly moving forward until the microswitch on the fork is activated, indicating that the fork is inserted into the wheel
+    rightMotor.SetPercent(0.65*MOVE);
+    leftMotor.SetPercent(0.65*MOVE);
+    while(forkSwitch == true)
+    {
+    }
+    rightMotor.Stop();
+    leftMotor.Stop();
+    Sleep(REST);
+    //Rotating the fork and wheel
+    servo_fork.SetDegree(95);
+    Sleep(REST);
+    //Resetting the hotplate position
+    servo_fork.SetDegree(0);
+    //Backing away from the hotplate
+    linearMove(6, MOVE);
+    //Turning to face the line that leads to the icecream machine
+    pivot(-90, TURN);
 }
