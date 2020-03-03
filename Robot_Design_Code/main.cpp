@@ -6,6 +6,7 @@
 #include <FEHRPS.h>
 #include <FEHSD.h>
 #include <math.h>
+#include <FEHBattery.h>
 
 //Defining pi for consistency and ease of use
 #define PI 3.1415
@@ -42,8 +43,8 @@
 //Defining min and max for servos
 #define SERVO_ARM_MAX 2350
 #define SERVO_ARM_MIN 500
-#define SERVO_FORK_MAX 50
-#define SERVO_FORK_MIN 40
+#define SERVO_FORK_MAX 2350
+#define SERVO_FORK_MIN 500
 
 //Declarations for IGWAN motors with their max voltage of 9V
 FEHMotor leftMotor(FEHMotor::Motor3,9);
@@ -113,24 +114,31 @@ int main(void)
 {
     //Variable declarations
     float x,y;
+    float bat_v = 0, m = 0;
 
     //Setting servo max and mins
     servo_arm.SetMax(SERVO_ARM_MAX);
     servo_arm.SetMin(SERVO_ARM_MIN);
-    //servo_fork.SetMax(SERVO_FORK_MAX);
-    //servo_fork.SetMin(SERVO_FORK_MIN);
+    servo_fork.SetMax(SERVO_FORK_MAX);
+    servo_fork.SetMin(SERVO_FORK_MIN);
 
     //Pre-run setup
     //Resetting servo positions
     servo_arm.SetDegree(0.0);
-    //servo_fork.SetDegree(0.0);
+    servo_fork.SetDegree(0.0);
 
     //Waiting for a touch input
     LCD.Clear(FEHLCD::Black);
     LCD.SetFontColor(FEHLCD::White);
     LCD.WriteLine("Waiting for touch input to continue");
+    LCD.WriteAt("BATT:        V", 0, 222);
     while(true)
     {
+        //Writing battery voltage to screen
+        bat_v = ((bat_v*m)+Battery.Voltage());
+        bat_v = bat_v/(++m);
+        LCD.WriteAt(bat_v, 72, 222);
+
         if(LCD.Touch(&x,&y))
         {
             LCD.Clear(FEHLCD::Black);
@@ -387,7 +395,7 @@ bool checkCondition(int end)
         return true;
     case 1:
         //Microswitch end condition
-        if (backSwitch == false)
+        if (backSwitch.Value() == false)
         {
             return false;
         } else
@@ -427,7 +435,7 @@ bool microSwitchCheck(int side)
             return true;
         }
     case 1:
-        if (backLeftSwitch.Value() == false && backRightSwitch.Value() == false)
+        if (backSwitch.Value() == false)
         {
             return false;
         } else
@@ -662,7 +670,7 @@ void burger()
     //Slowly moving forward until the microswitch on the fork is activated, indicating that the fork is inserted into the wheel
     rightMotor.SetPercent(0.65*MOVE);
     leftMotor.SetPercent(0.65*MOVE);
-    while(forkSwitch == true)
+    while(forkSwitch.Value() == true)
     {
     }
     rightMotor.Stop();
