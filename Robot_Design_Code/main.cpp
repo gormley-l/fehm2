@@ -125,7 +125,7 @@ int main(void)
     //Pre-run setup
     //Resetting servo positions
     servo_arm.SetDegree(0.0);
-    servo_fork.SetDegree(0.0);
+    servo_fork.SetDegree(5.0);
 
     //Waiting for a touch input
     LCD.Clear(FEHLCD::Black);
@@ -650,7 +650,7 @@ void burger()
     while(leftEncoder.Counts() < ramp)
     {
     }
-    linearMove(6, MOVE);
+    linearMove(20, MOVE);
     //Turning towards ticket
     pivot(90, TURN);
     //Moving until the front microswitches activate off of the wall
@@ -662,14 +662,14 @@ void burger()
     leftMotor.Stop();
     rightMotor.Stop();
     //Backing off of the wall
-    linearMove(-2,MOVE);
+    linearMove(-2.2,MOVE);
     //Turning so that the back of the robot is facing the burger station
     pivot(90, TURN);
     //Moving the robot up to the burger staton
-    linearMove(-16,MOVE);
+    linearMove(-2,MOVE);
     //Slowly moving forward until the microswitch on the fork is activated, indicating that the fork is inserted into the wheel
-    rightMotor.SetPercent(0.65*MOVE);
-    leftMotor.SetPercent(0.65*MOVE);
+    rightMotor.SetPercent(-0.65*MOVE);
+    leftMotor.SetPercent(-0.65*MOVE);
     while(forkSwitch.Value() == true)
     {
     }
@@ -678,11 +678,11 @@ void burger()
     Sleep(REST);
     //Rotating the fork and wheel
     servo_fork.SetDegree(95);
-    Sleep(REST);
+    Sleep(2.0);
     //Resetting the hotplate position
     servo_fork.SetDegree(0);
     //Backing away from the hotplate
-    linearMove(6, MOVE);
+    linearMove(2, MOVE);
     //Turning to face the line that leads to the icecream machine
     pivot(-90, TURN);
 }
