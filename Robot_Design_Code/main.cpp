@@ -65,8 +65,9 @@ AnalogInputPin rightLine(FEHIO::P1_2);
 //Declaration of digital inputs for the microswitches
 DigitalInputPin frontLeftSwitch(FEHIO::P2_0);
 DigitalInputPin frontRightSwitch(FEHIO::P2_1);
-DigitalInputPin backSwitch(FEHIO::P2_2);
-DigitalInputPin forkSwitch(FEHIO::P2_3);
+DigitalInputPin backLeftSwitch(FEHIO::P2_3);
+DigitalInputPin backRightSwitch(FEHIO::P2_4);
+DigitalInputPin forkSwitch(FEHIO::P2_2);
 
 //Delcaring servos
 FEHServo servo_arm(FEHServo::Servo0);
@@ -92,6 +93,9 @@ void lineFollow(int condition);
 //Function prototype for testing line following end conditions
 bool checkCondition(int end);
 
+//Function prototype for finding a line assuming the robot is near one but not quite on it
+void findLine();
+
 //Function prototype for checking if a side's microswitches are pressed, accepts an int, 0 for front side, 1 for back side microswitches to be checked
 bool microSwitchCheck(int side);
 
@@ -110,11 +114,26 @@ void burger();
 //Function prototype for the first icecream flip
 void icecream_1(int lever);
 
+//Function prototype for the second icecream flip (back up)
+void icecream_2(int lever);
+
+//Function prototype for moving from jukebox to final button
+void jBox2Final();
+
+//Function prototype for performance tests
+void p1();
+void p2();
+void p3();
+
 int main(void)
 {
     //Variable declarations
     float x,y;
     float bat_v = 0, m = 0;
+    int icecreamLever;
+
+    //Setting up RPS
+    RPS.InitializeTouchMenu();
 
     //Setting servo max and mins
     servo_arm.SetMax(SERVO_ARM_MAX);
@@ -125,7 +144,7 @@ int main(void)
     //Pre-run setup
     //Resetting servo positions
     servo_arm.SetDegree(0.0);
-    servo_fork.SetDegree(5.0);
+    servo_fork.SetDegree(0.0);
 
     //Waiting for a touch input
     LCD.Clear(FEHLCD::Black);
@@ -139,13 +158,12 @@ int main(void)
         bat_v = bat_v/(++m);
         LCD.WriteAt(bat_v, 72, 222);
 
-        if(LCD.Touch(&x,&y))
+        if(microSwitchCheck(0))
         {
             LCD.Clear(FEHLCD::Black);
             break;
         }
     }
-    //lineFollow(0);
 
     //Waiting for start light
     LCD.WriteLine("Waiting for light to continue");
@@ -157,25 +175,20 @@ int main(void)
         }
     }
 
-    burger();
-    lineFollow(2);
+    //Obtaining ice cream lever value now that the run has started.
+    icecreamLever = RPS.GetIceCream();
 
-    pivot(-45, TURN);
-    linearMove(12, MOVE);
-    /*
+    //Course functions
     tray();
+    lineFollow(2);
+    icecream_1(icecreamLever);
+    burger();
+    icecream_2(icecreamLever);
     ticket();
-    rightMotor.SetPercent(-MOVE);
-    leftMotor.SetPercent(-MOVE);
-    while(backLeftSwitch.Value() == true)
-    {
-    }
-    rightMotor.Stop();
-    leftMotor.Stop();
-    linearMove(2,MOVE);
-    pivot(90, TURN);
-    linearMove(20,MOVE);
-    */
+    jukebox();
+    jBox2Final();
+
+
     //Printing statement to show code completion
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Done.");
@@ -319,9 +332,12 @@ void testCdS()
 void lineFollow(int condition)
 {
     //initilizing state variable
-    int state;
+    int state, time = 0;
 
     //print statement to show what robot is doing
+    LCD.Clear(FEHLCD::Black);
+    LCD.WriteLine("Looking for line");
+    findLine();
     LCD.Clear(FEHLCD::Black);
     LCD.WriteLine("Following Line");
 
@@ -332,29 +348,45 @@ void lineFollow(int condition)
         if(rightLine.Value() < RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
         {
             state = ON_LINE;
+            if(time == 0)
+            {
+                time = TimeNow();
+            }
         } else if (rightLine.Value() > RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
         {
             state = LINE_ON_RIGHT;
+            time = 0;
         }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() > CENTER_BREAK && leftLine.Value() > LEFT_BREAK)
         {
             state = LINE_ON_LEFT;
+            time = 0;
         }else if (rightLine.Value() > RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
         {
             state = LINE_FAR_RIGHT;
+            time = 0;
         }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() > LEFT_BREAK)
         {
             state = LINE_FAR_LEFT;
+            time = 0;
         }else if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
         {
             state = OFF_LINE;
+            time = 0;
         }
 
         //Setting state of line based on where sensors are located in relationship to the line
         switch(state)
         {
         case ON_LINE:
-            rightMotor.SetPercent(-10);
-            leftMotor.SetPercent(-10);
+            if(TimeNow() - time < 2.0)
+            {
+                rightMotor.SetPercent(-10);
+                leftMotor.SetPercent(-10);
+            }else if (TimeNow() - time >= 2.0)
+            {
+                rightMotor.SetPercent(-20);
+                leftMotor.SetPercent(-20);
+            }
             break;
         case LINE_ON_RIGHT:
             rightMotor.SetPercent(-20);
@@ -395,7 +427,7 @@ bool checkCondition(int end)
         return true;
     case 1:
         //Microswitch end condition
-        if (backSwitch.Value() == false)
+        if (microSwitchCheck(1))
         {
             return false;
         } else
@@ -418,6 +450,28 @@ bool checkCondition(int end)
     }
 }
 
+//Function definition that turns the robot around looking for a line
+void findLine()
+{
+    int i;
+    for (i = 1; i < 7; i++)
+    {
+        if (rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+            if (i % 2 == 0)
+            {
+                pivot(-10*i, TURN);
+            } else
+            {
+                pivot(10*i, TURN);
+            }
+        }else
+        {
+            i = 6;
+        }
+    }
+}
+
 //Function definition that checks for microswitch values on the front or back of the robot
 bool microSwitchCheck(int side)
 {
@@ -435,7 +489,7 @@ bool microSwitchCheck(int side)
             return true;
         }
     case 1:
-        if (backSwitch.Value() == false)
+        if (backLeftSwitch.Value() == false && backRightSwitch.Value() == false)
         {
             return false;
         } else
@@ -519,11 +573,6 @@ void jukebox()
         //Move towards final zone (red and move movements are different because the blue is further away from the final zone)
         linearMove(-8, MOVE);
     }
-    //Turn and align with the final button
-    pivot(45, TURN);
-    //Run into the finish button
-    linearMove(13, MOVE);
-    Sleep(REST);
 }
 
 //Function definition for dumping the tray
@@ -572,19 +621,6 @@ void tray()
     leftMotor.Stop();
     rightMotor.Stop();
     Sleep(REST);
-    lineFollow(2);
-    /* Code for performance test 2
-    //Backing up off of the sink in order to allow for easy movement
-    linearMove(-10, MOVE);
-    pivot(-90, TURN);
-    leftMotor.SetPercent(-MOVE);
-    rightMotor.SetPercent(-MOVE);
-    while(backSwitch.Value() == true)
-    {
-    }
-    leftMotor.Stop();
-    rightMotor.Stop();
-    */
 }
 
 //Function definition for moving the ticket using the servo arm
@@ -608,7 +644,6 @@ void ticket()
     servo_arm.SetDegree(100);
     //Inserting the servo arm into the ticket slot
     pivot(30, TURN);
-
     linearMove(-2,MOVE);
      pivot(10, TURN);
     //Moving forward with the ticket
@@ -620,20 +655,254 @@ void ticket()
     //Re-aligning the robot
     pivot(45, TURN);
     //Moving towards the ramp
-    /*linearMove(8, MOVE);
+    linearMove(8, MOVE);
     //Turning to face the ramp
     pivot(90, TURN);
     //Going down the ramp
     linearMove(22, MOVE);
-    //Turning to face the jukebox
-    pivot(90, TURN);*/
 }
 
 void burger()
 {
+    float t;
+    //Backing off of the wall
+    linearMove(-2.2,MOVE);
+    //Turning so that the back of the robot is facing the burger station
+    pivot(90, TURN);
+    //Moving the robot up to the burger staton
+    //Slowly moving forward until the microswitch on the fork is activated or it times out at 5 seconds, indicating that the fork is inserted into the wheel
+    t = TimeNow();
+    rightMotor.SetPercent(-10);
+    leftMotor.SetPercent(-10);
+    while((forkSwitch.Value() == true) && (TimeNow() - t < 5.0))
+    {
+    }
+    rightMotor.Stop();
+    leftMotor.Stop();
+    Sleep(REST);
+    //Rotating the fork and wheel
+    servo_fork.SetDegree(95);
+    Sleep(2.0);
+    //Resetting the hotplate position
+    servo_fork.SetDegree(0);
+    //Backing away from the hotplate
+    linearMove(0.5, MOVE);
+    //Turning to face the line that leads to the icecream machine
+    pivot(-90, TURN);
+    //Following line over to ice cream machine
+    lineFollow(2);
+}
+
+//Function definition for flipping the proper lever down
+void icecream_1(int lever)
+{
+    //Depending on the lever reading from rps, the robot will navigate to the correct line to then run into the lever
+    if (lever == 0)
+    {
+        //Already in line for the first lever, so turn to face it
+        pivot(90, TURN);
+        //Run into the lever
+        linearMove(12, MOVE);
+        Sleep(1.0);
+        //Back off of the lever using line following
+        lineFollow(2);
+        //Turn to face the burger area
+        pivot(-90, TURN);
+        //Move to the second icecream line
+        rightMotor.SetPercent(-20);
+        leftMotor.SetPercent(-20);
+        while(rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+        }
+        rightMotor.Stop();
+        leftMotor.Stop();
+        //Move to the third icecream line
+        rightMotor.SetPercent(-20);
+        leftMotor.SetPercent(-20);
+        while(rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+        }
+        rightMotor.Stop();
+        leftMotor.Stop();
+    }else if (lever == 1)
+    {
+        //Move from the first icecream line to the second
+        rightMotor.SetPercent(-20);
+        leftMotor.SetPercent(-20);
+        while(rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+        }
+        rightMotor.Stop();
+        leftMotor.Stop();
+        //Turn to face the lever
+        pivot(90, TURN);
+        //Run into the lever
+        linearMove(12, MOVE);
+        Sleep(1.0);
+        //Back off of the lever using line following
+        lineFollow(2);
+        //Turn to face the burger area
+        pivot(-90, TURN);
+        //Move to the third icecream line
+        rightMotor.SetPercent(-20);
+        leftMotor.SetPercent(-20);
+        while(rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+        }
+        rightMotor.Stop();
+        leftMotor.Stop();
+    }else if (lever == 2)
+    {
+        //Move from the first icecream line to the second
+        rightMotor.SetPercent(-20);
+        leftMotor.SetPercent(-20);
+        while(rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+        }
+        rightMotor.Stop();
+        leftMotor.Stop();
+        //Move to the third icecream line
+        rightMotor.SetPercent(-20);
+        leftMotor.SetPercent(-20);
+        while(rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+        }
+        rightMotor.Stop();
+        leftMotor.Stop();
+        //Turn and face the lever
+        pivot(90, TURN);
+        //Run into the lever
+        linearMove(12, MOVE);
+        Sleep(1.0);
+        //Back off of the lever using line following
+        lineFollow(2);
+        //Turn and face the burger area
+        pivot(-90, TURN);
+    }
+    //Follow the line unill the microswitches are pressed
+    lineFollow(1);
+}
+
+//Function definition for flipping the proper lever back up
+void icecream_2(int lever)
+{
+    if (lever == 0)
+    {
+        //Move from the third icecream line to the second
+        rightMotor.SetPercent(-20);
+        leftMotor.SetPercent(-20);
+        while(rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+        }
+        rightMotor.Stop();
+        leftMotor.Stop();
+        //Move to the first icecream line
+        rightMotor.SetPercent(-20);
+        leftMotor.SetPercent(-20);
+        while(rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+        }
+        rightMotor.Stop();
+        leftMotor.Stop();
+        //Turn and face the lever
+        pivot(-90, TURN);
+        //Run into the lever
+        linearMove(12, MOVE);
+        Sleep(1.0);
+        //Back off of the lever using line following
+        lineFollow(2);
+        //Move to line up with the wall by the ticket
+        linearMove(-6, MOVE);
+        //Turn to have the bumper face the wall
+        pivot(135, TURN);
+    }else if (lever == 1)
+    {
+        //Move from the first icecream line to the second
+        rightMotor.SetPercent(-20);
+        leftMotor.SetPercent(-20);
+        while(rightLine.Value() < RIGHT_BREAK && centerLine.Value() < CENTER_BREAK && leftLine.Value() < LEFT_BREAK)
+        {
+        }
+        rightMotor.Stop();
+        leftMotor.Stop();
+        //Turn to face the lever
+        pivot(90, TURN);
+        //Run into the lever
+        linearMove(12, MOVE);
+        Sleep(1.0);
+        //Back off of the lever using line following
+        lineFollow(2);
+        //Move to line up with the wall by the ticket
+        linearMove(-11, MOVE);
+        //Turn to have the bumper face the wall
+        pivot(135, TURN);
+    }else if (lever == 2)
+    {
+        //Already in line for the third lever, so turn to face it
+        pivot(90, TURN);
+        //Run into the lever
+        linearMove(12, MOVE);
+        Sleep(1.0);
+        //Back off of the lever using line following
+        lineFollow(2);
+        //Move to line up with the wall by the ticket
+        linearMove(-15, MOVE);
+        //Turn to have the bumper face the wall
+        pivot(135, TURN);
+    }
+}
+
+//Function definition for hitting final button
+void jBox2Final()
+{
+    //Turn and align with the final button
+    pivot(45, TURN);
+    //Run into the finish button
+    linearMove(13, MOVE);
+    Sleep(REST);
+}
+
+//Functions for performance tests
+void p1()
+{
+    jukebox();
+    pivot(90, TURN);
+    linearMove(20, 1.5*MOVE);
+}
+
+void p2()
+{
+    tray();
+    //Backing up off of the sink in order to allow for easy movement
+    linearMove(-10, MOVE);
+    pivot(-90, TURN);
+    leftMotor.SetPercent(-MOVE);
+    rightMotor.SetPercent(-MOVE);
+    while(microSwitchCheck(1))
+    {
+    }
+    leftMotor.Stop();
+    rightMotor.Stop();
+
+    ticket();
+    rightMotor.SetPercent(-MOVE);
+    leftMotor.SetPercent(-MOVE);
+    while(backLeftSwitch.Value() == true)
+    {
+    }
+    rightMotor.Stop();
+    leftMotor.Stop();
+    linearMove(2,MOVE);
+    pivot(90, TURN);
+    linearMove(20,MOVE);
+}
+
+void p3()
+{
     //This float is exclusively required to go up the ramp at a high speed but slow down to a slower speed without stopping to prevent the tray from flying off, the value in abs() is the distance being traveled
     float start = (318.0/(WHEEL*PI))*abs(2);
     float ramp = (318.0/(WHEEL*PI))*abs(22);
+    //Performance test 3 code
     //This function is set up to start at the beginning of the course and move the robot up the ramp and dump the tray at the sink
     //Going up ramp from starting position
     rightMotor.SetPercent(0.65*MOVE);
@@ -650,7 +919,7 @@ void burger()
     while(leftEncoder.Counts() < ramp)
     {
     }
-    linearMove(20, MOVE);
+    linearMove(18, MOVE);
     //Turning towards ticket
     pivot(90, TURN);
     //Moving until the front microswitches activate off of the wall
@@ -661,28 +930,7 @@ void burger()
     }
     leftMotor.Stop();
     rightMotor.Stop();
-    //Backing off of the wall
-    linearMove(-2.2,MOVE);
-    //Turning so that the back of the robot is facing the burger station
-    pivot(90, TURN);
-    //Moving the robot up to the burger staton
-    linearMove(-2,MOVE);
-    //Slowly moving forward until the microswitch on the fork is activated, indicating that the fork is inserted into the wheel
-    rightMotor.SetPercent(-0.65*MOVE);
-    leftMotor.SetPercent(-0.65*MOVE);
-    while(forkSwitch.Value() == true)
-    {
-    }
-    rightMotor.Stop();
-    leftMotor.Stop();
-    Sleep(REST);
-    //Rotating the fork and wheel
-    servo_fork.SetDegree(95);
-    Sleep(2.0);
-    //Resetting the hotplate position
-    servo_fork.SetDegree(0);
-    //Backing away from the hotplate
-    linearMove(2, MOVE);
-    //Turning to face the line that leads to the icecream machine
-    pivot(-90, TURN);
+    burger();
+    pivot(-135, TURN);
+    linearMove(12, MOVE);
 }
